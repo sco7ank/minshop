@@ -6,29 +6,46 @@ import StoreCartControl from '../../features/storefront/controls/StoreCartContro
 import StoreAccountControl from '../../features/storefront/controls/StoreAccountControl.astro';
 
 /**
- * STORE-OWNED. Edit freely — this file belongs to your store.
+ * STORE-OWNED — HYPEBEN 页头。
  *
- * It renders on EVERY page, including cart, checkout, payment, account, and
- * Admin login. A broken header is a broken checkout, so keep the core controls
- * below and change their placement and styling rather than their markup.
+ * 双模式导航：资讯 / 商城 切换固定在页头，在任何页面（文章详情、商品详情、
+ * 品牌页）都能一键进入另一种模式。模式本身由路径推导（见 features/storefront/
+ * mode.ts），切换即跳转对应模式首页；购物车与用户会话跨模式共享。
  *
- * See CUSTOMIZING.md for the full contract.
+ * 保留的契约：`data-nav-disclosure`（购物车抽屉脚本会关闭它）、
+ * StoreSearch / StoreCartControl / StoreAccountControl 的 data 钩子。
  */
 interface Props {
   model: StorefrontShellModel;
 }
 
 const { model } = Astro.props;
+const isShop = model.mode === 'shop';
+
+// 模式主导航：资讯模式走编辑部频道，商城模式走商品分类（D1 运营可管理）。
+const modeLinks: { text: string; href: string }[] = isShop
+  ? [{ text: '全部商品', href: '/products' }, ...model.categoryLinks, { text: '品牌', href: '/brands' }]
+  : [
+      { text: '全部资讯', href: '/articles' },
+      { text: '品牌', href: '/brands' },
+      ...model.channels.slice(0, 3),
+    ];
+
+// 运营在后台管理的菜单项追加在后，按 href 去重（不与模式导航重复）。
+const seen = new Set(modeLinks.map((link) => link.href));
+const navLinks = [...modeLinks, ...model.headerLinks.filter((link) => !seen.has(link.href))];
+
+const toggleBase =
+  'px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] transition-colors sm:px-3';
+const toggleActive = 'bg-brand text-on-brand';
+const toggleIdle = 'text-muted hover:text-brand';
 ---
 
-{/* Announcement bar. Deliberately NOT fixed: the header below is sticky, so a
-    fixed bar would need the header offset by the bar's height — which varies
-    as the message wraps on narrow screens. Static means it's seen on load,
-    scrolls away, and costs no vertical space on mobile. */}
+{/* Announcement bar — 公告条（D1 设置，非空即显示）。 */}
 {
   model.announcement && (
     <div class="bg-brand text-on-brand">
-      <div class="mx-auto max-w-6xl px-6 py-2 text-center text-xs tracking-wide">
+      <div class="mx-auto max-w-[92rem] px-4 py-2 text-center text-xs tracking-wide sm:px-6">
         {model.announcement.href ? (
           <a href={model.announcement.href} class="underline-offset-2 hover:underline">
             {model.announcement.text}
@@ -41,40 +58,71 @@ const { model } = Astro.props;
   )
 }
 
-<header class="sticky top-0 z-20 border-b border-line bg-paper/85 backdrop-blur">
-  <div class="mx-auto flex max-w-6xl items-center gap-6 px-6 py-5">
-    <a href="/" aria-label={model.storeName} class="font-serif text-2xl tracking-tight">
+<header class="sticky top-0 z-20 border-b border-line bg-paper/90 backdrop-blur">
+  <div class="mx-auto flex max-w-[92rem] items-center gap-3 px-4 py-3 sm:gap-5 sm:px-6">
+    {/* 品牌字标：店名即字标，运营可在后台改名。 */}
+    <a href={model.modeHomes[model.mode]} aria-label={model.storeName} class="shrink-0">
       {
         model.logo ? (
-          /* Not lazy: the header logo is above the fold on every page. The
-             store name stays the alt text, so the header still reads the
-             same to a screen reader or when the image fails. */
-          <img src={model.logo.src} alt={model.logo.alt} class="h-8 max-w-48 object-contain sm:h-10" />
+          <img src={model.logo.src} alt={model.logo.alt} class="h-7 max-w-48 object-contain sm:h-8" />
         ) : (
-          <span>{model.storeName}</span>
+          <span class="font-sans text-lg font-black uppercase tracking-tight sm:text-xl">
+            {model.storeName}
+          </span>
         )
       }
     </a>
+
+    {/* 双模式切换 — 每个页面都能到达另一种模式。 */}
+    <div
+      class="flex shrink-0 items-center border border-line"
+      role="group"
+      aria-label="切换浏览模式"
+    >
+      <a
+        href={model.modeHomes.discover}
+        aria-current={isShop ? undefined : 'page'}
+        class={`${toggleBase} ${isShop ? toggleIdle : toggleActive}`}
+      >
+        {model.modeLabels.discover}
+      </a>
+      <a
+        href={model.modeHomes.shop}
+        aria-current={isShop ? 'page' : undefined}
+        class={`${toggleBase} ${isShop ? toggleActive : toggleIdle} border-l border-line`}
+      >
+        {model.modeLabels.shop}
+      </a>
+    </div>
+
+    {/* 模式主导航（桌面端内联；移动端进汉堡菜单）。一个 StoreNav 实例同时
+        渲染两个根：inline 行在 lg+ 显示，disclosure 在 lg 以下显示。 */}
+    <StoreNav
+      links={navLinks}
+      class="ml-auto hidden min-w-0 items-center gap-4 text-xs uppercase tracking-widest text-muted lg:flex lg:gap-5"
+      disclosureClass="relative lg:hidden"
+    />
+
     <StoreSearch
       action={model.search.action}
       query={model.search.query}
       class="ml-auto hidden flex-1 justify-end sm:flex"
+      inputClass="w-32 border-0 border-b border-line bg-transparent px-1 py-1 text-sm transition-all focus:w-52 focus:border-brand focus:outline-none lg:w-40"
     />
-    {/* ml-auto pins the whole nav to the right edge of the header row, so it
-        stays flush right no matter how few items a merchant has.
-        min-w-0 is what lets long labels ellipsize instead of overflowing the
-        page: flex items default to min-width:auto, and without it here the
-        shrink stops at this level and the row grows past the viewport —
-        putting min-w-0 only on the links themselves is not enough. */}
+
     <nav
-      aria-label="Primary"
-      class="ml-auto flex min-w-0 items-center gap-4 text-xs uppercase tracking-widest text-muted sm:gap-6"
+      aria-label="账户与购物袋"
+      class="flex shrink-0 items-center gap-3 text-xs uppercase tracking-widest text-muted sm:gap-4"
     >
-      <StoreNav links={model.headerLinks} />
-      {/* Search input is desktop-only; give mobile a link to the search page. */}
-      <a href={model.search.action} class="hover:text-brand sm:hidden">Search</a>
       {model.cart.enabled && <StoreCartControl href={model.cart.href} />}
       {model.account.enabled && <StoreAccountControl href={model.account.href} />}
+      {/* 移动端搜索入口。 */}
+      <a href={model.search.action} class="hover:text-brand lg:hidden" aria-label="搜索">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="16.5" y1="16.5" x2="21" y2="21" />
+        </svg>
+      </a>
     </nav>
   </div>
 </header>

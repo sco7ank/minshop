@@ -17,7 +17,7 @@ if (!(await accountsEnabled())) return Astro.redirect('/', 303);
 if (await getCustomerEmail(Astro.cookies)) return Astro.redirect('/account', 303);
 
 let sent = false;
-let error = Astro.url.searchParams.get('error') === 'expired' ? 'That link expired — request a new one.' : '';
+let error = Astro.url.searchParams.get('error') === 'expired' ? '链接已失效——请重新获取。' : '';
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
@@ -34,9 +34,9 @@ if (Astro.request.method === 'POST') {
     Astro.request.headers.get('CF-Connecting-IP'),
   );
   if (!tsOk) {
-    error = 'Verification failed — please try again.';
+    error = '验证未通过——请重试。';
   } else if (!isValidEmail(email)) {
-    error = 'Enter a valid email address.';
+    error = '请输入有效的电子邮箱地址。';
   } else {
     await requestLogin(email, Astro.url.origin);
     sent = true;
@@ -44,20 +44,19 @@ if (Astro.request.method === 'POST') {
 }
 ---
 
-<Layout title="Sign in">
+<Layout title="登录">
   <div class="mx-auto max-w-sm py-10">
-    <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">Sign in</h1>
+    <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">登录</h1>
 
     {
       sent ? (
         <p class="rounded-md border border-line bg-surface px-4 py-3 text-sm text-muted">
-          Check your email — we sent a one-time sign-in link. It expires in 15 minutes.
+          请查收邮件——我们已发送一次性登录链接，15 分钟内有效。
         </p>
       ) : (
         <Fragment>
           <p class="mb-5 text-sm text-muted">
-            Enter your email and we'll send a sign-in link — no password needed. Use the address
-            from your orders to see your order history.
+            输入电子邮箱，我们会发送一条登录链接——无需密码。使用下单时填写的地址即可查看历史订单。
           </p>
           {error && (
             <p class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -81,7 +80,7 @@ if (Astro.request.method === 'POST') {
               type="submit"
               class="w-full rounded-md bg-brand px-4 py-2.5 font-medium text-on-brand hover:bg-brand-hover"
             >
-              Send sign-in link
+              发送登录链接
             </button>
           </form>
         </Fragment>

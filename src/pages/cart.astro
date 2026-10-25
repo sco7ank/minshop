@@ -24,10 +24,10 @@ const ready = (m: string) => m === "demo" || (!!settings && isMethodAvailable(m 
 const firstReady = methods.find(ready);
 const methodRows = methods.map((m) => ({ m, ready: ready(m), primary: m === firstReady }));
 const METHOD: Record<string, { label: string; hint: string; setupHint: string }> = {
-  stripe: { label: 'Pay with card', hint: 'Visa, Mastercard, Apple Pay & more', setupHint: 'Set up card payments' },
-  lightning: { label: 'Pay with Lightning ⚡', hint: 'Instant — from any Lightning wallet', setupHint: 'Set up Lightning' },
-  opennode: { label: 'Pay with Bitcoin', hint: 'On-chain or Lightning (OpenNode)', setupHint: 'Set up OpenNode' },
-  demo: { label: 'Demo checkout', hint: 'Simulated — places a real test order, no charge', setupHint: '' },
+  stripe: { label: '银行卡支付', hint: 'Visa、Mastercard、Apple Pay 等', setupHint: '配置银行卡支付' },
+  lightning: { label: 'Lightning 支付 ⚡', hint: '即时到账 — 支持任意 Lightning 钱包', setupHint: '配置 Lightning' },
+  opennode: { label: 'Bitcoin 支付', hint: '链上或 Lightning（OpenNode）', setupHint: '配置 OpenNode' },
+  demo: { label: '演示结账', hint: '模拟下单 — 生成真实测试订单，不扣款', setupHint: '' },
 };
 
 const cart = readCart(Astro.cookies);
@@ -53,8 +53,8 @@ const destination = stripeDestination(
 const shopHref = catalogPath(Astro.locals.settings?.homePage);
 ---
 
-<Layout title="Cart">
-  <h1 class="mb-10 font-serif text-4xl tracking-tight">Your cart</h1>
+<Layout title="购物袋">
+  <h1 class="mb-10 font-serif text-4xl tracking-tight">购物袋</h1>
 
   {
     error && (
@@ -67,11 +67,11 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
   {
     lines.length === 0 ? (
       <p class="text-muted">
-        Your cart is empty.{' '}
+        购物袋是空的。{' '}
         <a href={shopHref} class="border-b border-brand text-brand">
-          Continue shopping
+          去逛逛
         </a>
-        .
+        。
       </p>
     ) : (
       <Fragment>
@@ -101,15 +101,15 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
                     </span>
                   )}
                   <span class="block text-xs tabular-nums text-muted">
-                    {formatPrice(l.unitPriceCents)} each
+                    {formatPrice(l.unitPriceCents)} / 件
                   </span>
                   {l.availableStock <= 0 ? (
                     <span class="mt-1 block text-xs uppercase tracking-widest text-red-600">
-                      Out of stock
+                      已售罄
                     </span>
                   ) : l.qty > l.availableStock ? (
                     <span class="mt-1 block text-xs text-amber-700">
-                      Only {l.availableStock} available
+                      仅剩 {l.availableStock} 件
                     </span>
                   ) : null}
                 </span>
@@ -125,14 +125,14 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
                     min="0"
                     max="99"
                     value={l.qty}
-                    aria-label="Quantity"
+                    aria-label="数量"
                     class="w-14 border-b border-line bg-transparent py-1 text-center tabular-nums focus:border-brand focus:outline-none"
                   />
                   <button
                     type="submit"
                     class="text-xs uppercase tracking-widest text-faint hover:text-brand"
                   >
-                    Update
+                    更新
                   </button>
                 </form>
                 <span class="w-20 text-right tabular-nums">{formatPrice(l.lineTotalCents)}</span>
@@ -141,10 +141,10 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
                   <input type="hidden" name="key" value={l.key} />
                   <button
                     type="submit"
-                    aria-label="Remove"
+                    aria-label="移除"
                     class="text-xs uppercase tracking-widest text-faint hover:text-red-600"
                   >
-                    Remove
+                    移除
                   </button>
                 </form>
               </div>
@@ -157,20 +157,20 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
         <div class="mt-10 flex justify-end">
           <div class="w-full sm:max-w-sm">
             <div class="flex items-center justify-between">
-              <span class="text-xs uppercase tracking-widest text-muted">Subtotal</span>
+              <span class="text-xs uppercase tracking-widest text-muted">小计</span>
               <span class="text-lg tabular-nums">{formatPrice(subtotalCents)}</span>
             </div>
 
             {methods.length === 0 ? (
               <p class="mt-4 rounded-lg border border-dashed border-line px-5 py-4 text-center text-sm text-muted">
-                Checkout is currently unavailable.
+                结账暂时不可用。
               </p>
             ) : (
             <form method="POST" action="/api/checkout" class="mt-4 space-y-2">
               <input type="hidden" name="source" value="cart" />
               {destination.showSelect && (
                 <label class="mb-2 flex items-center justify-between gap-2 text-xs uppercase tracking-widest text-muted">
-                  Ship to
+                  配送至
                   <select
                     name="country"
                     class="rounded-md border border-line px-2 py-1.5 text-sm normal-case tracking-normal text-ink"

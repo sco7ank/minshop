@@ -3,6 +3,8 @@ import type { StoreSettings } from '../settings/db';
 import { getProductBySlug, listProductImages, type Product } from '../products/db';
 import { listVariants, listExtras } from '../products/variants';
 import { categoriesForProduct, relatedProducts } from '../categories/db';
+import { articlesForProduct } from '../articles/db';
+import { brandLinkForProduct, brandNamesForProducts } from '../brands/db';
 import { getRelatedStored, storeRelatedIds } from '../search';
 import { enabledMethods } from '../payments';
 import { markdownExcerpt, renderMarkdown } from '../pages/markdown.ts';
@@ -12,6 +14,7 @@ import { catalogPath } from '../settings/home';
 import { formatMoney, toMajorUnits, currencyDecimals } from '../../money';
 import { requirePublicId } from '../catalog/serialize';
 import { buildProductCard } from './productCard';
+import { buildArticleCard } from './articleCard';
 import type {
   ProductDetailModel,
   ProductPurchaseModel,
@@ -37,6 +40,7 @@ const RELATED_TARGET = 4;
 const HERO_SIZES = '(min-width: 768px) 528px, calc(100vw - 48px)';
 const THUMBNAIL_SIZES = '64px';
 const RELATED_CARD_SIZES = '(min-width: 1024px) 252px, calc(50vw - 36px)';
+const STORY_CARD_SIZES = '(min-width: 1024px) 252px, calc(50vw - 36px)';
 
 export type LoadedProductDetail =
   | { status: 'not_found' }
@@ -106,8 +110,15 @@ export async function loadProductDetail(
   if (related.length < RELATED_TARGET) {
     const seen = new Set(related.map((p) => p.id));
     const byCategory = await relatedProducts(db, product.id, RELATED_TARGET + semantic.length);
-    related = [...related, ...byCategory.filter((p) => !seen.has(p.id))].slice(0, RELATED_TARGET);
+    related = [...semantic, ...byCategory.filter((p) => !seen.has(p.id))].slice(0, RELATED_TARGET);
   }
+
+  // HYPEBEN 双向关联：商品 → 品牌 / 商品 → 报道，与关联商品卡上的品牌名。
+  const [brandLink, storyArticles, brandNames] = await Promise.all([
+    brandLinkForProduct(db, product.id),
+    articlesForProduct(db, product.id, 3),
+    brandNamesForProducts(db, [...related.map((p) => p.id), product.id]),
+  ]);
 
   const hasVariants = variants.length > 0;
   const state = stockState(product.stock);
@@ -184,7 +195,12 @@ export async function loadProductDetail(
 
   return {
     status: 'ok',
-    cacheTagIds: [product.public_id, ...related.map((candidate) => candidate.public_id)],
+    cacheTagIds: [
+      product.public_id,
+      ...related.map((candidate) => candidate.public_id),
+      brandLink?.publicId ?? null,
+      ...storyArticles.map((article) => article.public_id),
+    ],
     backfillRelated:
       storedRelated === null ? () => storeRelatedIds(product.id, RELATED_TARGET) : null,
     seo: {
@@ -223,6 +239,17 @@ export async function loadProductDetail(
           delivery: options.delivery,
           currency: options.currency,
           sizes: RELATED_CARD_SIZES,
+          brand: brandNames.get(candidate.id) ?? null,
+        }),
+      ),
+      brand: brandLink
+        ? { text: brandLink.name, href: `/brands/${brandLink.slug}` }
+        : null,
+      stories: storyArticles.map((article) =>
+        buildArticleCard(article, {
+          baseUrl: options.imageBaseUrl,
+          delivery: options.delivery,
+          sizes: STORY_CARD_SIZES,
         }),
       ),
       backHref: catalogPath(options.settings?.homePage),

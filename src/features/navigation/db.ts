@@ -150,8 +150,8 @@ ORDER BY mi.location, mi.position, mi.id`;
 
 /**
  * Where an item points. Resolved in code, not SQL, because 'catalog' depends on
- * a store setting: the catalog lives at `/` normally and at `/products` once the
- * home page has been pointed elsewhere.
+ * a store setting: in HYPEBEN the catalog has the fixed address `/products`
+ * (`/` is the DISCOVER editorial home).
  */
 export function resolveMenuHref(
   targetType: MenuTargetType,

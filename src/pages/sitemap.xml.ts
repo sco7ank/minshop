@@ -4,7 +4,8 @@ import { env } from 'cloudflare:workers';
 import { listProducts, countProducts } from '../features/products/db';
 import { listCategories } from '../features/categories/db';
 import { listPublishedPages } from '../features/pages/db';
-import { catalogPath } from '../features/settings/home';
+import { listPublishedArticles } from '../features/articles/db';
+import { listPublishedBrands } from '../features/brands/db';
 import { publicOrigin } from '../features/http/origin';
 
 export const prerender = false;
@@ -12,11 +13,10 @@ export const prerender = false;
 /**
  * Every URL the sitemap should list, in order.
  *
- * The catalog is included at whichever address it actually lives at. When the
- * home page has been pointed at a page or product, `/` renders that target and
- * canonicals to it — so listing `/` would put a non-canonical duplicate in the
- * sitemap (the target is already listed on its own URL), while the real catalog
- * at `/products` would be missing entirely.
+ * HYPEBEN: `/` is the DISCOVER editorial home and is listed as such — unless a
+ * merchant pointed the home page at a page or product, in which case `/`
+ * renders that target and canonicals to its own URL (already listed), so only
+ * the target's URL belongs here. The catalog always lives at `/products`.
  *
  * Pure and exported so the rule is testable without standing up a request.
  */
@@ -27,27 +27,49 @@ export function sitemapLocs(
     categories: { slug: string }[];
     products: { slug: string }[];
     pages: { slug: string }[];
+    articles: { slug: string }[];
+    brands: { slug: string }[];
   },
 ): string[] {
   return [
-    `${origin}${catalogPath(homePage)}`,
+    // `/` only when it renders the editorial home itself; an overridden `/`
+    // canonicals to its target, which is listed on its own URL below.
+    ...(homePage ? [] : [`${origin}/`]),
+    `${origin}/products`,
+    `${origin}/articles`,
+    `${origin}/brands`,
     ...data.categories.map((c) => `${origin}/categories/${c.slug}`),
     ...data.products.map((p) => `${origin}/products/${p.slug}`),
     // Published pages only — drafts must not be discoverable.
     ...data.pages.map((p) => `${origin}/pages/${p.slug}`),
+    ...data.articles.map((a) => `${origin}/articles/${a.slug}`),
+    ...data.brands.map((b) => `${origin}/brands/${b.slug}`),
   ];
 }
 
-// Dynamic sitemap: storefront + every active product, category, and published page. Slugs are
-// URL-safe (a-z0-9-), so no XML escaping is needed.
+// Dynamic sitemap: editorial home + catalog + every active product, category,
+// published page/article/brand. Slugs are URL-safe (a-z0-9-), so no XML
+// escaping is needed.
 export const GET: APIRoute = async ({ url, locals }) => {
   const origin = publicOrigin(url.origin, env.CANONICAL_ORIGIN);
   const total = await countProducts(env.DB);
   const products = total > 0 ? await listProducts(env.DB, total, 0) : [];
   const categories = await listCategories(env.DB);
   const pages = await listPublishedPages(env.DB);
+  // Every published article/brand: the 资讯中心 is a first-class part of the
+  // site, so its URLs are discoverable exactly like products are.
+  const [articlesPage, brands] = await Promise.all([
+    listPublishedArticles(env.DB, { limit: 10_000, offset: 0 }),
+    listPublishedBrands(env.DB),
+  ]);
 
-  const locs = sitemapLocs(origin, locals.settings?.homePage, { categories, products, pages });
+  const locs = sitemapLocs(origin, locals.settings?.homePage, {
+    categories,
+    products,
+    pages,
+    articles: articlesPage.articles,
+    brands,
+  });
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

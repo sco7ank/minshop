@@ -1,0 +1,27 @@
+---
+import { env } from 'cloudflare:workers';
+import Layout from '../../layouts/Layout.astro';
+import ArticlesIndex from '#theme/ArticlesIndex.astro';
+import { loadArticlesList } from '../../features/storefront/articles';
+import { getConfig } from '../../config';
+
+/**
+ * HYPEBEN 资讯中心（DISCOVER 模式）：频道筛选 + 分页。
+ * 查询解析、D1、URL 构造都在加载器；模板只消费模型。
+ */
+const model = await loadArticlesList(env.DB, {
+  base: '/articles',
+  searchParams: Astro.url.searchParams,
+  responseHeaders: Astro.response.headers,
+  imageBaseUrl: getConfig().images.baseUrl,
+  currency: getConfig().currency,
+  delivery: Astro.locals.settings?.imageDelivery,
+});
+---
+
+<Layout
+  title={model.currentCategoryLabel ? `${model.currentCategoryLabel}资讯` : '资讯中心'}
+  description="HYPEBEN 编辑部：球鞋、时装、新品、艺术设计、音乐与生活方式的一手报道。"
+>
+  <ArticlesIndex model={model} />
+</Layout>

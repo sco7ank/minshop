@@ -24,9 +24,11 @@ interface Props {
 const { model } = Astro.props;
 ---
 
-<div class="mb-10">
-  <p class="text-xs uppercase tracking-[0.25em] text-muted">{model.eyebrow}</p>
-  <h1 class="mt-2 font-serif text-4xl tracking-tight sm:text-5xl">{model.heading}</h1>
+<div class="mb-10 border-b border-line pb-8">
+  <p class="text-[0.6875rem] font-medium uppercase tracking-[0.22em] text-accent">{model.eyebrow}</p>
+  <h1 class="mt-3 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl" style="font-weight: var(--display-weight)">
+    {model.heading}
+  </h1>
 </div>
 
 {
@@ -52,7 +54,7 @@ const { model } = Astro.props;
      grid. Reword it freely; keep the role and keep it non-empty. */
   model.products.length === 0 && (
     <p role="status" class="text-muted">
-      No products yet.
+      暂无商品。
     </p>
   )
 }

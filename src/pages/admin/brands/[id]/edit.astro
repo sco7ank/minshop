@@ -1,0 +1,165 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import MediaPicker from '../../../../features/media/MediaPicker.astro';
+import { getBrandByPublicId, productLinksForBrand } from '../../../../features/brands/db';
+import { listProducts } from '../../../../features/products/db';
+import { parsePublicId } from '../../../../features/ids/publicId';
+
+// The route param is the brnd_ public ID; numeric row ids are not accepted.
+const publicId = parsePublicId(Astro.params.id, 'brand');
+const brand = publicId ? await getBrandByPublicId(env.DB, publicId) : null;
+if (!brand) return new Response('Not found', { status: 404 });
+
+const error = Astro.url.searchParams.get('error');
+const saved = Astro.url.searchParams.has('saved');
+
+// 已关联商品（回显勾选）与可选项（仅 active 商品可挂）。
+const [linked, productOptions] = await Promise.all([
+  productLinksForBrand(env.DB, brand.id),
+  listProducts(env.DB, 200),
+]);
+const selectedProducts = new Set(linked.map((p) => p.id));
+---
+
+<AdminLayout title={`编辑 ${brand.name}`} active="brands">
+  <a href="/admin/brands" class="text-sm text-gray-500 hover:text-brand">&larr; 返回品牌列表</a>
+  <div class="mt-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+    <h1 class="font-serif text-3xl tracking-tight">编辑品牌</h1>
+    {
+      brand.published !== 0 && (
+        <a
+          href={`/brands/${brand.slug}`}
+          target="_blank"
+          rel="noopener"
+          class="text-sm text-accent hover:underline"
+        >
+          在商店查看 ↗
+        </a>
+      )
+    }
+  </div>
+
+  {
+    error && (
+      <p class="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {error}
+      </p>
+    )
+  }
+  {
+    saved && (
+      <p class="mb-6 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+        已保存。
+      </p>
+    )
+  }
+
+  <form method="POST" action={`/api/admin/brands/${brand.public_id}`} data-brand-form class="max-w-2xl">
+    <div class="flex flex-wrap gap-4">
+      <label class="block flex-1 text-xs uppercase tracking-widest text-gray-400">
+        品牌名
+        <input
+          type="text"
+          name="name"
+          value={brand.name}
+          required
+          maxlength="60"
+          class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm normal-case tracking-normal text-gray-900 focus:border-brand focus:outline-none"
+        />
+      </label>
+      <label class="block flex-1 text-xs uppercase tracking-widest text-gray-400">
+        别名
+        <input
+          type="text"
+          name="slug"
+          value={brand.slug}
+          class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm normal-case tracking-normal text-gray-900 focus:border-brand focus:outline-none"
+        />
+      </label>
+    </div>
+
+    <label class="mt-4 block text-xs uppercase tracking-widest text-gray-400">
+      品牌介绍
+      <textarea
+        name="description"
+        rows="5"
+        maxlength="2000"
+        placeholder="一两段话介绍这个品牌——风格、来历、为什么值得关注。"
+        class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm normal-case tracking-normal text-gray-900 focus:border-brand focus:outline-none"
+        >{brand.description}</textarea
+      >
+    </label>
+
+    {/* 品牌 Logo：MediaPicker 选择后写入隐藏字段，并回显当前键。 */}
+    <div class="mt-4" data-logo-field>
+      <span class="block text-xs uppercase tracking-widest text-gray-400">Logo</span>
+      <div class="mt-1 flex flex-wrap items-center gap-3">
+        <MediaPicker id="brand-logo" label="从媒体库选择" />
+        <input type="hidden" name="logo_image_key" value={brand.logo_image_key ?? ''} data-logo-input />
+        <span class="text-xs text-gray-500" data-logo-label>
+          {brand.logo_image_key ? brand.logo_image_key : '未选择（品牌页将不显示 Logo）'}
+        </span>
+      </div>
+    </div>
+
+    {/* 关联商品：品牌页「在售商品」区；商品详情页的品牌行也会链接到这里。 */}
+    <fieldset class="mt-8">
+      <legend class="text-sm font-medium text-gray-700">关联商品</legend>
+      <p class="mt-1 text-xs text-gray-400">
+        勾选的商品会出现在品牌页的「在售商品」区；商品卡片与详情页也会展示这个品牌。
+      </p>
+      {
+        productOptions.length === 0 ? (
+          <p class="mt-2 text-sm text-gray-400">暂无在售商品。</p>
+        ) : (
+          <div class="mt-2 max-h-48 space-y-1 overflow-auto rounded-md border border-line p-2">
+            {productOptions.map((product) => (
+              <label class="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="product"
+                  value={product.public_id ?? ''}
+                  checked={selectedProducts.has(product.id)}
+                  disabled={!product.public_id}
+                  class="h-4 w-4"
+                />
+                {product.name}
+              </label>
+            ))}
+          </div>
+        )
+      }
+    </fieldset>
+
+    <div class="mt-6 flex flex-wrap items-center gap-4">
+      <label class="flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox" name="published" checked={brand.published !== 0} class="rounded" />
+        发布
+      </label>
+      <button
+        type="submit"
+        class="rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover"
+      >
+        保存
+      </button>
+      <span class="text-xs text-gray-400">
+        草稿品牌不出现在商店与文章编辑器的品牌选项中。缓存生效后变更最多一分钟可见。
+      </span>
+    </div>
+  </form>
+</AdminLayout>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-brand-form]');
+
+  // Logo：选择后写入隐藏字段并回显键名。
+  const logoField = form?.querySelector<HTMLElement>('[data-logo-field]');
+  const logoInput = form?.querySelector<HTMLInputElement>('[data-logo-input]');
+  const logoLabel = form?.querySelector<HTMLElement>('[data-logo-label]');
+  logoField?.addEventListener('media:selected', (event) => {
+    const detail = (event as CustomEvent).detail as { imageKey: string };
+    if (logoInput) logoInput.value = detail.imageKey;
+    if (logoLabel) logoLabel.textContent = detail.imageKey;
+  });
+</script>

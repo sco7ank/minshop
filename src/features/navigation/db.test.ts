@@ -34,10 +34,10 @@ describe('resolveMenuHref', () => {
     expect(resolveMenuHref('home', null, 'page:3')).toBe('/');
   });
 
-  // The catalog moves when / is taken over; reusing catalogPath keeps this rule
-  // in one place rather than restating it here.
-  it('follows the catalog as the home page changes', () => {
-    expect(resolveMenuHref('catalog', null, null)).toBe('/');
+  // HYPEBEN: the catalog has the fixed address /products (`/` is the editorial
+  // home); reusing catalogPath keeps this rule in one place.
+  it('points Catalog at /products in HYPEBEN mode', () => {
+    expect(resolveMenuHref('catalog', null, null)).toBe('/products');
     expect(resolveMenuHref('catalog', null, 'page:3')).toBe('/products');
   });
 

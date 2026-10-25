@@ -5,7 +5,7 @@ import StoreImage from '../../features/storefront/controls/StoreImage.astro';
 /**
  * STORE-OWNED. Edit freely — this file belongs to your store, and upstream will
  * not rewrite it. It renders every product card on the storefront: catalog,
- * category, search, and recommendations.
+ * category, search, recommendations, home rail, article/brand associations.
  *
  * The contract, in full:
  *   - `card` is a ProductCardModel. Its URLs, price string, and availability
@@ -13,6 +13,8 @@ import StoreImage from '../../features/storefront/controls/StoreImage.astro';
  *   - Render the image through <StoreImage>. It owns responsive attributes and
  *     LCP behavior; copying its markup to change spacing loses both.
  *   - `card.inStock` is a boolean on purpose. Exact stock counts are private.
+ *   - `card.brand` is the linked brand name when one exists (HYPEBEN), else
+ *     null — render the line only when present, never invent one.
  *
  * See CUSTOMIZING.md for the full store-owned surface.
  */
@@ -31,7 +33,7 @@ const Heading = headingLevel;
 
 <li class="reveal group" style={`animation-delay:${Math.min(index, 8) * 60}ms`}>
   <a href={card.href} class="block">
-    <div class="relative overflow-hidden rounded-md bg-surface">
+    <div class="relative overflow-hidden bg-surface">
       <StoreImage
         image={card.image}
         fade
@@ -39,13 +41,22 @@ const Heading = headingLevel;
       />
       {
         !card.inStock && (
-          <span class="absolute left-3 top-3 rounded-full bg-surface/90 px-2.5 py-0.5 text-xs uppercase tracking-widest text-muted ring-1 ring-line">
-            Sold out
+          <span class="absolute left-3 top-3 bg-brand px-2.5 py-1 text-[0.625rem] font-medium uppercase tracking-[0.2em] text-on-brand">
+            已售罄
           </span>
         )
       }
     </div>
-    <Heading class="mt-4 text-sm font-medium tracking-tight">{card.name}</Heading>
+    {
+      card.brand && (
+        <p class="mt-4 text-[0.625rem] font-medium uppercase tracking-[0.2em] text-faint">
+          {card.brand}
+        </p>
+      )
+    }
+    <Heading class={`text-sm font-medium tracking-tight text-ink${card.brand ? ' mt-1' : ' mt-4'}`}>
+      {card.name}
+    </Heading>
     <p class="mt-1 text-sm tabular-nums text-muted">{card.formattedPrice}</p>
   </a>
 </li>

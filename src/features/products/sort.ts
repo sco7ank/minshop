@@ -34,9 +34,9 @@ export function orderByClause(
  * already-active field toggles it (the arrow flips), so a field never appears twice.
  */
 export const STORE_SORTS: { sort: string; dir: 'asc' | 'desc'; label: string }[] = [
-  { sort: 'newest', dir: 'desc', label: 'Newest' },
-  { sort: 'price', dir: 'asc', label: 'Price' },
-  { sort: 'name', dir: 'asc', label: 'Name' },
+  { sort: 'newest', dir: 'desc', label: '最新上架' },
+  { sort: 'price', dir: 'asc', label: '价格' },
+  { sort: 'name', dir: 'asc', label: '名称' },
 ];
 
 export type StoreSort = 'newest' | 'price' | 'name';

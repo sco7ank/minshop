@@ -1,0 +1,17 @@
+---
+import { env } from 'cloudflare:workers';
+import Layout from '../../layouts/Layout.astro';
+import BrandsIndex from '#theme/BrandsIndex.astro';
+import { loadBrandsIndex } from '../../features/storefront/brands';
+import { getConfig } from '../../config';
+
+/** HYPEBEN 品牌索引（DISCOVER 模式）。 */
+const model = await loadBrandsIndex(env.DB, {
+  imageBaseUrl: getConfig().images.baseUrl,
+  delivery: Astro.locals.settings?.imageDelivery,
+});
+---
+
+<Layout title="品牌" description="HYPEBEN 编辑部持续报道的品牌，与买手店在售单品一一对应。">
+  <BrandsIndex model={model} />
+</Layout>

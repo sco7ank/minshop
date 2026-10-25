@@ -1,0 +1,20 @@
+---
+import { env } from 'cloudflare:workers';
+import HomeExperience from '#theme/HomeExperience.astro';
+import { loadHomeExperience } from './home';
+import { getConfig } from '../../config';
+
+/**
+ * The HYPEBEN DISCOVER home: editorial lead + featured + latest + product rail
+ * + brands + categories. Glue only — the loader owns D1, cache tags, and URL
+ * construction; the store-owned HomeExperience template owns presentation.
+ */
+const model = await loadHomeExperience(env.DB, {
+  responseHeaders: Astro.response.headers,
+  imageBaseUrl: getConfig().images.baseUrl,
+  currency: getConfig().currency,
+  delivery: Astro.locals.settings?.imageDelivery,
+});
+---
+
+<HomeExperience model={model} />

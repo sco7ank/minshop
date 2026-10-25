@@ -1,0 +1,34 @@
+---
+import { env } from 'cloudflare:workers';
+import Layout from '../../layouts/Layout.astro';
+import BrandDetail from '#theme/BrandDetail.astro';
+import { loadBrandPage } from '../../features/storefront/brands';
+import { getConfig } from '../../config';
+
+/**
+ * HYPEBEN 品牌页（DISCOVER 模式）：介绍 + 相关报道 + 在售商品。
+ * 草稿与不存在的 slug 同样 404，且 404 不缓存。
+ */
+const loaded = await loadBrandPage(env.DB, {
+  slug: Astro.params.slug,
+  responseHeaders: Astro.response.headers,
+  imageBaseUrl: getConfig().images.baseUrl,
+  currency: getConfig().currency,
+  delivery: Astro.locals.settings?.imageDelivery,
+});
+
+if (loaded.status === 'not_found') {
+  return new Response('Not found', {
+    status: 404,
+    headers: { 'cache-control': 'no-store' },
+  });
+}
+---
+
+<Layout
+  title={loaded.model.name}
+  description={loaded.model.description || undefined}
+  image={loaded.model.logo?.src}
+>
+  <BrandDetail model={loaded.model} />
+</Layout>

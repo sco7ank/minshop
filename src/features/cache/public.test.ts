@@ -26,6 +26,14 @@ describe('isPublicStorefrontPath', () => {
     expect(isPublicStorefrontPath('/partials/cart')).toBe(false);
     expect(isPublicStorefrontPath('/pay/order-id')).toBe(false);
   });
+
+  // HYPEBEN 资讯中心与品牌页：内容与访客无关，可公开缓存。
+  it('includes HYPEBEN editorial and brand documents', () => {
+    expect(isPublicStorefrontPath('/articles')).toBe(true);
+    expect(isPublicStorefrontPath('/articles/drop-report')).toBe(true);
+    expect(isPublicStorefrontPath('/brands')).toBe(true);
+    expect(isPublicStorefrontPath('/brands/acme')).toBe(true);
+  });
 });
 
 describe('responseCacheControl', () => {
@@ -36,6 +44,10 @@ describe('responseCacheControl', () => {
     '/categories/home',
     '/search',
     '/pages/about',
+    '/articles',
+    '/articles/drop-report',
+    '/brands',
+    '/brands/acme',
     '/robots.txt',
     '/sitemap.xml',
     '/llms.txt',

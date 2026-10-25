@@ -16,6 +16,11 @@ export function isPublicStorefrontPath(pathname: string): boolean {
     pathname.startsWith('/category/') ||
     pathname.startsWith('/categories/') ||
     pathname.startsWith('/pages/') ||
+    // HYPEBEN 资讯中心与品牌页：内容对所有访客一致。
+    pathname === '/articles' ||
+    pathname.startsWith('/articles/') ||
+    pathname === '/brands' ||
+    pathname.startsWith('/brands/') ||
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
     pathname === '/llms.txt'

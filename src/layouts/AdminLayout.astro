@@ -11,6 +11,8 @@ import '../styles/admin.css';
 
 type Section =
   | 'dashboard'
+  | 'articles'
+  | 'brands'
   | 'products'
   | 'orders'
   | 'customers'
@@ -46,6 +48,9 @@ const inventoryExceptionCount = await countUnresolvedInventoryExceptions(env.DB)
 
 const nav: { key: Section; label: string; href: string }[] = [
   { key: 'dashboard', label: 'Dashboard', href: '/admin' },
+  // HYPEBEN 是媒体 × 电商一体的站点，内容管理排在商品之前。
+  { key: 'articles', label: '文章', href: '/admin/articles' },
+  { key: 'brands', label: '品牌', href: '/admin/brands' },
   { key: 'products', label: 'Products', href: '/admin/products' },
   { key: 'orders', label: 'Orders', href: '/admin/orders' },
   { key: 'customers', label: 'Customers', href: '/admin/customers' },

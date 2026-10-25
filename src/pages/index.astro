@@ -1,19 +1,19 @@
 ---
 import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
-import ProductList from '../features/products/ProductList.astro';
+import HomeFeed from '../features/storefront/HomeFeed.astro';
 import { resolveHomePath } from '../features/settings/home';
 
-// A store can point `/` at a page or a single product instead of the catalog.
-// Rewriting rather than duplicating those templates keeps one implementation of
-// each, and it makes the canonical URL resolve to the real page — so the same
-// content served at `/` and at `/pages/<slug>` is not two indexable copies.
-// Anything unresolvable (never set, unpublished, deleted, deactivated) falls
-// through to the catalog: a 404 homepage would be edge-cached for everyone.
+/**
+ * HYPEBEN 首页（DISCOVER 模式）：编辑部 × 商城融合。
+ *
+ * 商户仍可用 homePage 设置把 `/` 指向某个页面或单品（rewrite 保留原逻辑）；
+ * 未设置时渲染编辑部首页，商城目录固定位于 `/products`。
+ */
 const homePath = await resolveHomePath(env.DB, Astro.locals.settings?.homePage);
 if (homePath) return Astro.rewrite(homePath);
 ---
 
-<Layout>
-  <ProductList />
+<Layout title="首页">
+  <HomeFeed />
 </Layout>

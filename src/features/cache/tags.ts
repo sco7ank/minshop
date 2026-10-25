@@ -4,6 +4,8 @@ export const CACHE_TAG = {
   catalog: 'catalog',
   shell: 'shell',
   product: (publicId: string) => `product:${publicId}`,
+  article: (publicId: string) => `article:${publicId}`,
+  brand: (publicId: string) => `brand:${publicId}`,
 } as const;
 
 const VALID_TAG = /^[\x21-\x2B\x2D-\x7E]{1,1024}$/;
@@ -51,5 +53,23 @@ export function productCacheTags(publicIds: Iterable<string | null | undefined>)
     [...publicIds]
       .filter((publicId): publicId is string => /^prod_[0-9a-z]+$/.test(publicId ?? ''))
       .map(CACHE_TAG.product),
+  );
+}
+
+/** 文章缓存标签：首页/详情/品牌页引用某篇文章时挂上，文章更新即失效。 */
+export function articleCacheTags(publicIds: Iterable<string | null | undefined>): string[] {
+  return normalizeCacheTags(
+    [...publicIds]
+      .filter((publicId): publicId is string => /^art_[0-9a-z]+$/.test(publicId ?? ''))
+      .map(CACHE_TAG.article),
+  );
+}
+
+/** 品牌缓存标签：品牌页与商品卡片品牌名引用品牌时挂上。 */
+export function brandCacheTags(publicIds: Iterable<string | null | undefined>): string[] {
+  return normalizeCacheTags(
+    [...publicIds]
+      .filter((publicId): publicId is string => /^brnd_[0-9a-z]+$/.test(publicId ?? ''))
+      .map(CACHE_TAG.brand),
   );
 }

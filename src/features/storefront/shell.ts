@@ -1,5 +1,8 @@
 import type { MenuItem } from '../navigation/db';
+import type { Category } from '../categories/db';
 import { mediaUrl } from '../media/url';
+import { ARTICLE_CATEGORIES } from '../articles/taxonomy';
+import { MODE_LABELS, modeHomePath, type BrowseMode } from './mode';
 import type { StorefrontLink, StorefrontShellModel } from './models';
 
 /**
@@ -8,8 +11,8 @@ import type { StorefrontLink, StorefrontShellModel } from './models';
  * Pure by construction: everything it needs is passed in, already loaded. The
  * shell renders on every document route including checkout and the pay page, so
  * adding a query here would put a database round trip on the critical path of
- * the routes least able to afford one. Settings and menus arrive from the single
- * batched read middleware already performs.
+ * the routes least able to afford one. Settings, menus and the top-level
+ * category nav arrive from the single batched read middleware already performs.
  */
 export interface ShellInput {
   storeName: string;
@@ -28,11 +31,29 @@ export interface ShellInput {
   searchQuery: string;
   cartEnabled: boolean;
   accountsEnabled: boolean;
+  /** Current browsing mode, derived from the request path. */
+  mode: BrowseMode;
+  /** Top-level categories for the shop-mode nav (raw rows; filtered here). */
+  categories?: Category[];
 }
 
 const toLink = (item: MenuItem): StorefrontLink => ({ text: item.text, href: item.href });
 
 export function buildShellModel(input: ShellInput): StorefrontShellModel {
+  const topCategories = (input.categories ?? [])
+    .filter((category) => category.parent_id === null)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, 6)
+    .map((category) => ({ text: category.name, href: `/categories/${category.slug}` }));
+
+  // 资讯频道：封闭频道集（taxonomy），链接带 category 查询参数。
+  const channels: StorefrontLink[] = ARTICLE_CATEGORIES.map((category) => ({
+    text: category.label,
+    href: `/articles?category=${category.slug}`,
+  }));
+
+  const modes: BrowseMode[] = ['discover', 'shop'];
+
   return {
     storeName: input.storeName,
     logo: input.logoImageKey
@@ -53,5 +74,16 @@ export function buildShellModel(input: ShellInput): StorefrontShellModel {
     search: { action: '/search', query: input.searchQuery },
     cart: { enabled: input.cartEnabled, href: '/cart' },
     account: { enabled: input.accountsEnabled, href: '/account' },
+    mode: input.mode,
+    modeLabels: Object.fromEntries(modes.map((mode) => [mode, MODE_LABELS[mode]])) as Record<
+      BrowseMode,
+      string
+    >,
+    modeHomes: Object.fromEntries(modes.map((mode) => [mode, modeHomePath(mode)])) as Record<
+      BrowseMode,
+      string
+    >,
+    channels,
+    categoryLinks: topCategories,
   };
 }

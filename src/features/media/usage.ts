@@ -4,15 +4,23 @@ import type { D1Database } from '@cloudflare/workers-types';
 export interface MediaUsage {
   products: Array<{ id: number; public_id: string | null; name: string }>;
   pages: Array<{ id: number; public_id: string | null; title: string }>;
+  articles: Array<{ id: number; public_id: string | null; title: string }>;
+  brands: Array<{ id: number; public_id: string | null; name: string }>;
   logo: boolean;
 }
 
 export function emptyUsage(): MediaUsage {
-  return { products: [], pages: [], logo: false };
+  return { products: [], pages: [], articles: [], brands: [], logo: false };
 }
 
 export function isUnused(usage: MediaUsage): boolean {
-  return usage.products.length === 0 && usage.pages.length === 0 && !usage.logo;
+  return (
+    usage.products.length === 0 &&
+    usage.pages.length === 0 &&
+    usage.articles.length === 0 &&
+    usage.brands.length === 0 &&
+    !usage.logo
+  );
 }
 
 /**
@@ -44,6 +52,28 @@ const PAGE_USAGE_SQL = `
    WHERE pm.media_id IN (%IDS%)
    ORDER BY pg.title`;
 
+const ARTICLE_USAGE_SQL = `
+  SELECT am.media_id AS media_id, a.id AS article_id, a.public_id AS article_public_id, a.title AS article_title
+    FROM article_media am
+    JOIN articles a ON a.id = am.article_id
+   WHERE am.media_id IN (%IDS%)
+   ORDER BY a.title`;
+
+/** 文章封面与品牌 Logo 都直接引用 image_key（与 products.image_key 同模式）。 */
+const COVER_USAGE_SQL = `
+  SELECT m.id AS media_id, a.id AS article_id, a.public_id AS article_public_id, a.title AS article_title
+    FROM media m
+    JOIN articles a ON a.cover_image_key = m.image_key
+   WHERE m.id IN (%IDS%)
+   ORDER BY a.title`;
+
+const BRAND_LOGO_USAGE_SQL = `
+  SELECT m.id AS media_id, b.id AS brand_id, b.public_id AS brand_public_id, b.name AS brand_name
+    FROM media m
+    JOIN brands b ON b.logo_image_key = m.image_key
+   WHERE m.id IN (%IDS%)
+   ORDER BY b.name`;
+
 /**
  * Usage for a whole grid page in a bounded number of statements — never one
  * query per row. Ids are bound once per statement (48 parameters for a full
@@ -58,9 +88,12 @@ export async function mediaUsageForIds(
   if (ids.length === 0) return usage;
 
   const placeholders = ids.map(() => '?').join(', ');
-  const [products, pages, logo] = await db.batch<Record<string, unknown>>([
+  const [products, pages, articles, covers, brands, logo] = await db.batch<Record<string, unknown>>([
     db.prepare(PRODUCT_USAGE_SQL.replace('%IDS%', placeholders)).bind(...ids),
     db.prepare(PAGE_USAGE_SQL.replace('%IDS%', placeholders)).bind(...ids),
+    db.prepare(ARTICLE_USAGE_SQL.replace('%IDS%', placeholders)).bind(...ids),
+    db.prepare(COVER_USAGE_SQL.replace('%IDS%', placeholders)).bind(...ids),
+    db.prepare(BRAND_LOGO_USAGE_SQL.replace('%IDS%', placeholders)).bind(...ids),
     db.prepare("SELECT value FROM settings WHERE key = 'logo_image_key'"),
   ]);
 
@@ -83,6 +116,48 @@ export async function mediaUsageForIds(
     usage
       .get(row.media_id)
       ?.pages.push({ id: row.page_id, public_id: row.page_public_id, title: row.page_title });
+  }
+  const pushArticle = (row: {
+    media_id: number;
+    article_id: number;
+    article_public_id: string | null;
+    article_title: string;
+  }) => {
+    const entry = usage.get(row.media_id);
+    if (!entry) return;
+    // 一张图可同时是正文引用与封面；按文章去重。
+    if (entry.articles.some((a) => a.id === row.article_id)) return;
+    entry.articles.push({
+      id: row.article_id,
+      public_id: row.article_public_id,
+      title: row.article_title,
+    });
+  };
+  for (const row of (articles.results ?? []) as Array<{
+    media_id: number;
+    article_id: number;
+    article_public_id: string | null;
+    article_title: string;
+  }>) {
+    pushArticle(row);
+  }
+  for (const row of (covers.results ?? []) as Array<{
+    media_id: number;
+    article_id: number;
+    article_public_id: string | null;
+    article_title: string;
+  }>) {
+    pushArticle(row);
+  }
+  for (const row of (brands.results ?? []) as Array<{
+    media_id: number;
+    brand_id: number;
+    brand_public_id: string | null;
+    brand_name: string;
+  }>) {
+    usage
+      .get(row.media_id)
+      ?.brands.push({ id: row.brand_id, public_id: row.brand_public_id, name: row.brand_name });
   }
 
   const logoKey = ((logo.results ?? []) as Array<{ value: string }>)[0]?.value;
@@ -108,7 +183,7 @@ export async function mediaUsage(db: D1Database, id: number): Promise<MediaUsage
 export interface UsageLink {
   href: string;
   label: string;
-  kind: 'product' | 'page' | 'logo';
+  kind: 'product' | 'page' | 'article' | 'brand' | 'logo';
   /** Tooltip. Per-kind rather than templated: "the logo that uses this image"
    *  reads wrong, because the logo IS the use rather than a thing having one. */
   title: string;
@@ -132,6 +207,18 @@ export function usageLinks(usage: MediaUsage): UsageLink[] {
       label: p.title,
       kind: 'page' as const,
       title: `Edit the ${p.title} page`,
+    })),
+    ...usage.articles.map((a) => ({
+      href: `/admin/articles/${a.public_id}/edit`,
+      label: a.title,
+      kind: 'article' as const,
+      title: `Edit the article ${a.title}`,
+    })),
+    ...usage.brands.map((b) => ({
+      href: `/admin/brands/${b.public_id}/edit`,
+      label: b.name,
+      kind: 'brand' as const,
+      title: `Edit ${b.name}`,
     })),
     // The logo is a setting, not a row, so it links to where it is chosen.
     ...(usage.logo
@@ -161,6 +248,20 @@ export function describeUsage(usage: MediaUsage): string {
     parts.push(
       `${usage.pages.length} page${usage.pages.length === 1 ? '' : 's'} (${usage.pages
         .map((p) => p.title)
+        .join(', ')})`,
+    );
+  }
+  if (usage.articles.length > 0) {
+    parts.push(
+      `${usage.articles.length} article${usage.articles.length === 1 ? '' : 's'} (${usage.articles
+        .map((a) => a.title)
+        .join(', ')})`,
+    );
+  }
+  if (usage.brands.length > 0) {
+    parts.push(
+      `${usage.brands.length} brand${usage.brands.length === 1 ? '' : 's'} (${usage.brands
+        .map((b) => b.name)
         .join(', ')})`,
     );
   }

@@ -16,6 +16,7 @@ import {
   groupMenus,
   type MenuItemRow,
 } from './features/navigation/db';
+import { TOP_CATEGORIES_SQL, type Category } from './features/categories/db';
 import {
   checkRateLimit,
   rateLimitBucket,
@@ -80,9 +81,12 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
     const wantsMenus = !path.startsWith('/admin');
     try {
       if (wantsMenus) {
-        const [settings, menus] = await env.DB.batch<Record<string, string>>([
+        // One batch, three reads: settings + header/footer menus + the top-level
+        // category nav the HYPEBEN shop mode renders. Same round trip as before.
+        const [settings, menus, categories] = await env.DB.batch<Record<string, string>>([
           env.DB.prepare(STORE_SETTINGS_SQL),
           env.DB.prepare(MENU_ITEMS_SQL),
+          env.DB.prepare(TOP_CATEGORIES_SQL),
         ]);
         context.locals.settings = parseStoreSettings(
           (settings.results ?? []) as Array<{ key: string; value: string }>,
@@ -91,6 +95,7 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
           (menus.results ?? []) as unknown as MenuItemRow[],
           context.locals.settings.homePage,
         );
+        context.locals.categories = (categories.results ?? []) as unknown as Category[];
       } else {
         context.locals.settings = await getStoreSettings(env.DB);
       }

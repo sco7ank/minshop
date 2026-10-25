@@ -38,6 +38,9 @@ export async function listCategories(db: D1Database): Promise<Category[]> {
   return results ?? [];
 }
 
+/** Top-level categories for the header nav — shares the middleware batch. */
+export const TOP_CATEGORIES_SQL = 'SELECT * FROM categories WHERE parent_id IS NULL ORDER BY name';
+
 export async function getCategory(db: D1Database, id: number): Promise<Category | null> {
   return db.prepare('SELECT * FROM categories WHERE id = ?').bind(id).first<Category>();
 }

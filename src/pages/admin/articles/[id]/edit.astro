@@ -1,0 +1,686 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import MediaPicker from '../../../../features/media/MediaPicker.astro';
+import { getArticleByPublicId } from '../../../../features/articles/db';
+import { productsForArticle, brandsForArticle } from '../../../../features/articles/db';
+import { listProducts } from '../../../../features/products/db';
+import { listBrands } from '../../../../features/brands/db';
+import { ARTICLE_CATEGORIES } from '../../../../features/articles/taxonomy';
+import { parsePublicId } from '../../../../features/ids/publicId';
+
+// The route param is the art_ public ID; numeric row ids are not accepted.
+const publicId = parsePublicId(Astro.params.id, 'article');
+const article = publicId ? await getArticleByPublicId(env.DB, publicId) : null;
+if (!article) return new Response('Not found', { status: 404 });
+
+const error = Astro.url.searchParams.get('error');
+const warning = Astro.url.searchParams.get('warning');
+const saved = Astro.url.searchParams.has('saved');
+
+// 已关联的商品 / 品牌（回显勾选）。
+const [selectedProductIds, selectedBrandIds, productOptions, brandOptions] = await Promise.all([
+  productsForArticle(env.DB, article.id),
+  brandsForArticle(env.DB, article.id),
+  listProducts(env.DB, 200),
+  listBrands(env.DB),
+]);
+const selectedProducts = new Set(selectedProductIds);
+const selectedBrands = new Set(selectedBrandIds);
+
+// Shown only while the body is empty. Doubles as the Markdown cheat sheet for an
+// editor who has never written any — it covers exactly what the toolbar above
+// can insert, so the buttons and the hint teach the same syntax.
+const PLACEHOLDER = `## 小节标题
+
+用 Markdown 写作。空行分隔段落。
+
+**加粗**  _斜体_  \`代码\`
+
+- 无序列表
+- 另一项
+
+1. 有序列表
+2. 另一项
+
+> 引用
+
+[一个链接](https://example.com)
+
+![描述这张图片](/images/media/photo.webp)`;
+
+// Toolbar buttons are declarative: each carries the syntax to wrap or insert,
+// so the script stays one generic selection handler rather than nine.
+const tools = [
+  { action: 'prefix', value: '## ', label: 'H2', title: '标题' },
+  { action: 'wrap', value: '**', label: 'B', title: '加粗' },
+  { action: 'wrap', value: '_', label: 'I', title: '斜体' },
+  { action: 'link', value: '', label: 'Link', title: '链接' },
+  { action: 'prefix', value: '- ', label: 'List', title: '无序列表' },
+  { action: 'prefix', value: '1. ', label: '1.', title: '有序列表' },
+  { action: 'prefix', value: '> ', label: 'Quote', title: '引用' },
+  { action: 'wrap', value: '`', label: 'Code', title: '行内代码' },
+];
+---
+
+<AdminLayout title={`编辑 ${article.title}`} active="articles">
+  <a href="/admin/articles" class="text-sm text-gray-500 hover:text-brand">&larr; 返回文章列表</a>
+  <div class="mt-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+    <h1 class="font-serif text-3xl tracking-tight">编辑文章</h1>
+    {
+      article.published !== 0 && (
+        <a
+          href={`/articles/${article.slug}`}
+          target="_blank"
+          rel="noopener"
+          class="text-sm text-accent hover:underline"
+        >
+          在商店查看 ↗
+        </a>
+      )
+    }
+  </div>
+
+  {
+    error && (
+      <p class="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {error}
+      </p>
+    )
+  }
+  {
+    warning && (
+      <p class="mb-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        {warning}
+      </p>
+    )
+  }
+  {
+    saved && !warning && (
+      <p class="mb-6 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+        已保存。
+      </p>
+    )
+  }
+
+  <form method="POST" action={`/api/admin/articles/${article.public_id}`} data-article-form>
+    <div class="flex flex-wrap gap-4">
+      <label class="block flex-1 text-xs uppercase tracking-widest text-gray-400">
+        标题
+        <input
+          type="text"
+          name="title"
+          value={article.title}
+          required
+          maxlength="120"
+          class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm normal-case tracking-normal text-gray-900 focus:border-brand focus:outline-none"
+        />
+      </label>
+      <label class="block flex-1 text-xs uppercase tracking-widest text-gray-400">
+        别名
+        <input
+          type="text"
+          name="slug"
+          value={article.slug}
+          class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm normal-case tracking-normal text-gray-900 focus:border-brand focus:outline-none"
+        />
+      </label>
+    </div>
+
+    <div class="mt-4 flex flex-wrap gap-4">
+      <label class="block flex-1 text-xs uppercase tracking-widest text-gray-400">
+        频道
+        <select
+          name="category"
+          class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm normal-case tracking-normal text-gray-900 focus:border-brand focus:outline-none"
+        >
+          {ARTICLE_CATEGORIES.map((category) => (
+            <option value={category.slug} selected={category.slug === article.category}>
+              {category.label} — {category.blurb}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label class="block flex-1 text-xs uppercase tracking-widest text-gray-400">
+        作者
+        <input
+          type="text"
+          name="author"
+          value={article.author}
+          maxlength="60"
+          class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm normal-case tracking-normal text-gray-900 focus:border-brand focus:outline-none"
+        />
+      </label>
+    </div>
+
+    <label class="mt-4 block text-xs uppercase tracking-widest text-gray-400">
+      摘要
+      <textarea
+        name="excerpt"
+        rows="2"
+        maxlength="300"
+        placeholder="一两句话概括这篇内容——用于列表卡与搜索结果。"
+        class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm normal-case tracking-normal text-gray-900 focus:border-brand focus:outline-none"
+      >{article.excerpt}</textarea>
+    </label>
+
+    {/* 封面图：MediaPicker 选择后写入隐藏字段，并回显当前键。 */}
+    <div class="mt-4" data-cover-field>
+      <span class="block text-xs uppercase tracking-widest text-gray-400">封面图</span>
+      <div class="mt-1 flex flex-wrap items-center gap-3">
+        <MediaPicker id="article-cover" label="从媒体库选择" />
+        <input type="hidden" name="cover_image_key" value={article.cover_image_key ?? ''} data-cover-input />
+        <span class="text-xs text-gray-500" data-cover-label>
+          {article.cover_image_key ? article.cover_image_key : '未选择（将使用列表默认排版）'}
+        </span>
+      </div>
+    </div>
+
+    {/* Markdown / Split / Preview. Rendered hidden and revealed by the script,
+        because without JavaScript there is nothing to switch between — the
+        textarea is the whole editor and the preview never populates. */}
+    <div
+      data-modes
+      hidden
+      role="group"
+      aria-label="编辑器视图"
+      class="mt-6 flex items-center gap-1 border-b border-line px-2 py-2"
+    >
+      <button
+        type="button"
+        data-mode="write"
+        class="rounded px-3 py-1.5 text-xs uppercase tracking-widest text-gray-500"
+        aria-pressed="false"
+      >
+        Markdown
+      </button>
+      <button
+        type="button"
+        data-mode="split"
+        class="rounded px-3 py-1.5 text-xs uppercase tracking-widest text-gray-500"
+        aria-pressed="false"
+      >
+        分栏
+      </button>
+      <button
+        type="button"
+        data-mode="preview"
+        class="rounded px-3 py-1.5 text-xs uppercase tracking-widest text-gray-500"
+        aria-pressed="false"
+      >
+        预览
+      </button>
+    </div>
+
+    <div class="mt-2 overflow-hidden rounded-md border border-line">
+      <div data-panes class="lg:divide-x lg:divide-line">
+        <div data-pane="write" class="flex min-w-0 flex-col">
+          <div
+            data-toolbar
+            class="flex min-h-11 flex-wrap items-center gap-1 border-b border-line px-2 py-1"
+          >
+            {
+              tools.map((tool) => (
+                <button
+                  type="button"
+                  data-tool={tool.action}
+                  data-value={tool.value}
+                  title={tool.title}
+                  class="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 hover:text-brand"
+                >
+                  {tool.label}
+                </button>
+              ))
+            }
+            <MediaPicker
+              id="article-body"
+              label="插图"
+              buttonClass="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 hover:text-brand"
+            />
+          </div>
+
+          <textarea
+            name="body_markdown"
+            data-editor
+            rows="24"
+            spellcheck="true"
+            placeholder={PLACEHOLDER}
+            class="block w-full flex-1 resize-none overflow-hidden border-0 px-4 py-3 font-mono text-sm leading-relaxed focus:outline-none"
+            >{article.body_markdown}</textarea
+          >
+        </div>
+
+        <div data-pane="preview" hidden class="min-w-0 border-t border-line lg:border-t-0">
+          <div
+            class="flex h-11 items-center justify-between border-b border-line px-4 text-xs uppercase tracking-widest text-gray-400"
+          >
+            <span>预览 <span class="normal-case tracking-normal">· 点击可定位源码</span></span>
+            <span data-preview-status class="text-gray-300"></span>
+          </div>
+          {/* Server-rendered by the same renderer the storefront uses, so this
+              pane shows the real measure the article will render at. */}
+          <div data-preview class="overflow-x-auto px-4 py-3"></div>
+        </div>
+      </div>
+    </div>
+
+    {/* 关联商品：文章页「Shop this story」。公共 ID 提交，服务端解析。 */}
+    <fieldset class="mt-8">
+      <legend class="text-sm font-medium text-gray-700">关联商品</legend>
+      <p class="mt-1 text-xs text-gray-400">
+        勾选的商品会出现在文章详情页的「Shop this story」区；商品详情页也会反向展示这篇报道。
+      </p>
+      {
+        productOptions.length === 0 ? (
+          <p class="mt-2 text-sm text-gray-400">暂无在售商品。</p>
+        ) : (
+          <div class="mt-2 max-h-48 space-y-1 overflow-auto rounded-md border border-line p-2">
+            {productOptions.map((product) => (
+              <label class="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="product"
+                  value={product.public_id ?? ''}
+                  checked={selectedProducts.has(product.id)}
+                  disabled={!product.public_id}
+                  class="h-4 w-4"
+                />
+                {product.name}
+              </label>
+            ))}
+          </div>
+        )
+      }
+    </fieldset>
+
+    {/* 关联品牌：文章详情页「相关品牌」 chips。 */}
+    <fieldset class="mt-6">
+      <legend class="text-sm font-medium text-gray-700">关联品牌</legend>
+      <p class="mt-1 text-xs text-gray-400">
+        勾选的品牌会出现在文章详情页的品牌区；品牌页的「相关报道」也会收录这篇内容。草稿品牌暂不生效。
+      </p>
+      {
+        brandOptions.length === 0 ? (
+          <p class="mt-2 text-sm text-gray-400">还没有品牌，去「品牌」先建一个。</p>
+        ) : (
+          <div class="mt-2 max-h-48 space-y-1 overflow-auto rounded-md border border-line p-2">
+            {brandOptions.map((brand) => (
+              <label class="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="brand"
+                  value={brand.public_id ?? ''}
+                  checked={selectedBrands.has(brand.id)}
+                  disabled={brand.published !== 1 || !brand.public_id}
+                  class="h-4 w-4"
+                />
+                {brand.name}
+                {brand.published !== 1 && <span class="text-xs text-gray-400">（草稿）</span>}
+              </label>
+            ))}
+          </div>
+        )
+      }
+    </fieldset>
+
+    <div class="mt-6 flex flex-wrap items-center gap-4">
+      <label class="flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox" name="featured" checked={article.featured === 1} class="rounded" />
+        精选（进入首页头条候选）
+      </label>
+      <label class="flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox" name="published" checked={article.published !== 0} class="rounded" />
+        发布
+      </label>
+      <button
+        type="submit"
+        class="rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover"
+      >
+        保存
+      </button>
+      <span class="text-xs text-gray-400">
+        已发布文章出现在资讯列表、站点地图与页脚频道。缓存生效后变更最多一分钟可见。
+      </span>
+    </div>
+  </form>
+</AdminLayout>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-article-form]');
+  const editor = form?.querySelector<HTMLTextAreaElement>('[data-editor]');
+  const preview = form?.querySelector<HTMLElement>('[data-preview]');
+
+  // 封面图：选择后写入隐藏字段并回显键名。
+  const coverField = form?.querySelector<HTMLElement>('[data-cover-field]');
+  const coverInput = form?.querySelector<HTMLInputElement>('[data-cover-input]');
+  const coverLabel = form?.querySelector<HTMLElement>('[data-cover-label]');
+  coverField?.addEventListener('media:selected', (event) => {
+    const detail = (event as CustomEvent).detail as { imageKey: string };
+    if (coverInput) coverInput.value = detail.imageKey;
+    if (coverLabel) coverLabel.textContent = detail.imageKey;
+  });
+
+  if (form && editor && preview) {
+    /** Replace the selection, then restore a sensible cursor/selection. */
+    const replaceSelection = (text: string, selectFrom: number, selectTo: number) => {
+      const { selectionStart: start, selectionEnd: end } = editor;
+      editor.setRangeText(text, start, end, 'preserve');
+      editor.focus();
+      editor.setSelectionRange(start + selectFrom, start + selectTo);
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    const selected = () => editor.value.slice(editor.selectionStart, editor.selectionEnd);
+
+    form.querySelector('[data-toolbar]')?.addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLElement>('[data-tool]');
+      if (!button) return;
+      const kind = button.dataset.tool;
+      const value = button.dataset.value ?? '';
+      const text = selected();
+
+      if (kind === 'wrap') {
+        replaceSelection(`${value}${text}${value}`, value.length, value.length + text.length);
+      } else if (kind === 'prefix') {
+        const body = (text || '').split('\n').map((line) => `${value}${line}`).join('\n');
+        replaceSelection(body, 0, body.length);
+      } else if (kind === 'link') {
+        const label = text || '链接文字';
+        const md = `[${label}](https://)`;
+        replaceSelection(md, md.length - 1, md.length - 1);
+      }
+    });
+
+    // Media picker → insert an image at the cursor. Alt text is prompted for
+    // rather than left empty: an unlabelled image is an accessibility failure.
+    document.addEventListener('media:selected', (event) => {
+      const detail = (event as CustomEvent).detail as { imageKey: string };
+      const raw = window.prompt('为读屏软件描述这张图片：', '') ?? '';
+      const alt = raw.replace(/([\\[\]])/g, '\\$1');
+      // Root-relative, never detail.url: with IMAGE_BASE_URL set that is an
+      // absolute CDN address, which would be baked into the stored body.
+      const md = `![${alt}](/images/${detail.imageKey})`;
+      replaceSelection(md, 2, 2 + alt.length);
+    });
+
+    const status = form.querySelector<HTMLElement>('[data-preview-status]');
+    const previewPane = form.querySelector<HTMLElement>('[data-pane="preview"]');
+    const writePane = form.querySelector<HTMLElement>('[data-pane="write"]');
+    const panes = form.querySelector<HTMLElement>('[data-panes]');
+    const modeBar = form.querySelector<HTMLElement>('[data-modes]');
+    const MODE_KEY = 'hypeben:article-editor-mode';
+
+    let inFlight: AbortController | null = null;
+    let lastRendered: string | null = null;
+    let timer: number | undefined;
+
+    /** offsetParent is null while a pane is display:none — no point rendering. */
+    const previewVisible = () => !!previewPane?.offsetParent;
+
+    const render = async () => {
+      if (!previewVisible()) return;
+      const markdown = editor.value;
+      if (markdown === lastRendered) return; // nothing changed since the last render
+
+      inFlight?.abort();
+      const controller = new AbortController();
+      inFlight = controller;
+      if (status) status.textContent = '渲染中…';
+
+      const body = new FormData();
+      body.append('body_markdown', markdown);
+      try {
+        const res = await fetch('/api/admin/articles/preview', {
+          method: 'POST',
+          body,
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`预览失败（${res.status}）`);
+        preview.innerHTML = await res.text();
+        lastRendered = markdown;
+        if (status) status.textContent = '';
+      } catch (err) {
+        if (controller.signal.aborted) return; // superseded, not a failure
+        if (status) status.textContent = '';
+        preview.textContent = err instanceof Error ? err.message : '预览失败。';
+      } finally {
+        if (inFlight === controller) inFlight = null;
+      }
+    };
+
+    /** Floor of `rows` lines so an empty article keeps its cheat sheet visible. */
+    const minRowsHeight = () => {
+      const cs = getComputedStyle(editor);
+      const line = parseFloat(cs.lineHeight) || 20;
+      const rows = Number(editor.rows) || 10;
+      return rows * line + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    };
+
+    const autosize = () => {
+      if (!editor.offsetParent) return;
+      editor.style.minHeight = '0px';
+      editor.style.minHeight = `${Math.max(editor.scrollHeight, minRowsHeight())}px`;
+    };
+
+    const scheduleRender = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(render, 350);
+    };
+
+    editor.addEventListener('input', () => {
+      autosize();
+      scheduleRender();
+    });
+    window.addEventListener('resize', autosize);
+
+    /** Character offset where a 1-based source line starts. */
+    const offsetOfLine = (line: number) => {
+      const lines = editor.value.split('\n');
+      let offset = 0;
+      for (let i = 0; i < Math.min(line - 1, lines.length); i++) offset += lines[i].length + 1;
+      return offset;
+    };
+
+    const caretTopWithin = (offset: number): number => {
+      const cs = getComputedStyle(editor);
+      const mirror = document.createElement('div');
+      for (const prop of [
+        'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing',
+        'lineHeight', 'textTransform', 'wordSpacing', 'textIndent', 'tabSize',
+        'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+        'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+        'boxSizing',
+      ] as const) {
+        mirror.style[prop] = cs[prop];
+      }
+      mirror.style.position = 'absolute';
+      mirror.style.visibility = 'hidden';
+      mirror.style.left = '-9999px';
+      mirror.style.top = '0';
+      mirror.style.height = 'auto';
+      mirror.style.whiteSpace = 'pre-wrap';
+      mirror.style.overflowWrap = 'break-word';
+      mirror.style.width = `${editor.getBoundingClientRect().width}px`;
+
+      const marker = document.createElement('span');
+      marker.textContent = editor.value.slice(offset, offset + 1) || '.';
+      mirror.appendChild(document.createTextNode(editor.value.slice(0, offset)));
+      mirror.appendChild(marker);
+      document.body.appendChild(mirror);
+      const top = marker.offsetTop;
+      mirror.remove();
+      return top;
+    };
+
+    const selectRange = (start: number, end: number) => {
+      editor.focus();
+      editor.setSelectionRange(start, end);
+      const caretTop = editor.getBoundingClientRect().top + window.scrollY + caretTopWithin(start);
+      const lineHeight = parseFloat(getComputedStyle(editor).lineHeight) || 20;
+      const viewTop = window.scrollY;
+      const viewBottom = viewTop + window.innerHeight;
+      if (caretTop > viewTop + lineHeight * 2 && caretTop < viewBottom - lineHeight * 3) return;
+      window.scrollTo({
+        top: Math.max(0, caretTop - window.innerHeight / 3),
+        behavior: 'smooth',
+      });
+    };
+
+    const WORD_CHAR = /[\p{L}\p{N}_'’-]/u;
+    const wordAround = (text: string, offset: number): [number, number] => {
+      const onWord = WORD_CHAR.test(text[offset] ?? '');
+      const anchor = onWord ? offset : WORD_CHAR.test(text[offset - 1] ?? '') ? offset - 1 : -1;
+      if (anchor < 0) return [offset, offset];
+      let start = anchor;
+      let end = anchor;
+      while (start > 0 && WORD_CHAR.test(text[start - 1])) start--;
+      while (end < text.length && WORD_CHAR.test(text[end])) end++;
+      return [start, end];
+    };
+
+    const renderedOffsetAt = (block: HTMLElement, x: number, y: number): number | null => {
+      const doc = document as unknown as {
+        caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+        caretRangeFromPoint?: (x: number, y: number) => Range | null;
+      };
+      let node: Node | null = null;
+      let offset = 0;
+      const pos = doc.caretPositionFromPoint?.(x, y);
+      if (pos) {
+        node = pos.offsetNode;
+        offset = pos.offset;
+      } else {
+        const range = doc.caretRangeFromPoint?.(x, y);
+        if (!range) return null;
+        node = range.startContainer;
+        offset = range.startOffset;
+      }
+      if (!node || !block.contains(node)) return null;
+
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+      let total = 0;
+      let current: Node | null;
+      while ((current = walker.nextNode())) {
+        if (current === node) return total + offset;
+        total += current.textContent?.length ?? 0;
+      }
+      return null;
+    };
+
+    const mapRenderedToSource = (
+      source: string,
+      renderedText: string,
+      renderedOffset: number,
+    ): number => {
+      const target = Math.min(renderedOffset, renderedText.length);
+      let si = 0;
+      let ri = 0;
+      while (ri < target && si < source.length) {
+        if (source[si] === renderedText[ri]) ri++;
+        si++;
+      }
+      return si;
+    };
+
+    // Click anywhere in the preview to land on the source that produced it.
+    preview.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      const block = target.closest<HTMLElement>('[data-source-line]');
+      if (!block) return;
+      const line = Number(block.dataset.sourceLine);
+      if (!Number.isFinite(line)) return;
+
+      const blockText = block.textContent ?? '';
+      const renderedOffset = renderedOffsetAt(
+        block,
+        (event as MouseEvent).clientX,
+        (event as MouseEvent).clientY,
+      );
+
+      if (writePane?.hidden) setMode('write');
+
+      const lineStart = offsetOfLine(line);
+
+      if (target.tagName === 'IMG') {
+        const match = /!\[[^\]]*\]\([^)]*\)/.exec(editor.value.slice(lineStart));
+        if (match) {
+          const start = lineStart + match.index;
+          selectRange(start, start + match[0].length);
+          return;
+        }
+      }
+
+      const endLine = Number(block.dataset.sourceEnd);
+      const blockEnd = Number.isFinite(endLine)
+        ? offsetOfLine(endLine)
+        : (editor.value.indexOf('\n', lineStart) + 1 || editor.value.length);
+
+      if (renderedOffset !== null) {
+        const caret =
+          lineStart +
+          mapRenderedToSource(
+            editor.value.slice(lineStart, blockEnd),
+            blockText,
+            renderedOffset,
+          );
+        const [start, end] = wordAround(editor.value, caret);
+        selectRange(start, end);
+        return;
+      }
+
+      const lineEnd = editor.value.indexOf('\n', lineStart);
+      selectRange(lineStart, lineEnd === -1 ? editor.value.length : lineEnd);
+    });
+
+    // Markdown / Split / Preview. The control only exists with JavaScript, so
+    // it is revealed here rather than rendered visible and then broken.
+    const modeButtons = form.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    const setMode = (mode: string) => {
+      modeButtons.forEach((button) => {
+        const active = button.dataset.mode === mode;
+        button.setAttribute('aria-pressed', String(active));
+        button.classList.toggle('bg-gray-100', active);
+        button.classList.toggle('text-gray-700', active);
+        button.classList.toggle('text-gray-500', !active);
+      });
+      if (writePane) writePane.hidden = mode === 'preview';
+      if (previewPane) previewPane.hidden = mode === 'write';
+      panes?.classList.toggle('lg:grid', mode === 'split');
+      panes?.classList.toggle('lg:grid-cols-2', mode === 'split');
+      try {
+        localStorage.setItem(MODE_KEY, mode);
+      } catch {
+        // Private browsing or storage disabled — the mode just won't persist.
+      }
+      if (mode !== 'write') render();
+      autosize();
+    };
+
+    modeButtons.forEach((button) =>
+      button.addEventListener('click', () => setMode(button.dataset.mode!)),
+    );
+    if (modeBar) modeBar.hidden = false;
+
+    let initial = 'split';
+    try {
+      const stored = localStorage.getItem(MODE_KEY);
+      if (stored === 'write' || stored === 'split' || stored === 'preview') initial = stored;
+    } catch {
+      // Ignore and use the default.
+    }
+    setMode(initial); // also performs the first render
+  }
+</script>
+
+<style is:global>
+  /* The preview HTML is injected at runtime, so Astro's scoped styles can't
+     reach it — hence is:global, narrowed to [data-preview] which exists only
+     on this screen. Signals that blocks are clickable. */
+  [data-preview] [data-source-line] {
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  [data-preview] [data-source-line]:hover {
+    background: rgba(0, 0, 0, 0.035);
+  }
+</style>

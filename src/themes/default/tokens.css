@@ -1,84 +1,81 @@
 /*
- * ── Brand theming surface ────────────────────────────────────────────────
+ * ── HYPEBEN brand theming surface ─────────────────────────────────────
  * THIS is the file to edit when you rebrand a clone — colors, fonts, radii.
- * Upstream (the template) keeps structural CSS in global.css and doesn't touch
- * this file, so your theme never conflicts when you pull updates.
  *
- * Tailwind v4 turns each --color-* into utilities (bg-brand, text-accent, …)
- * and uses --font-sans / --radius-* as global defaults. See README → Theming.
+ * HYPEBEN — 潮流媒体 × 潮流电商。黑白基调 + 单一克制强调色（signal red），
+ * 锐利圆角，杂志编辑感排版。Tailwind v4 turns each --color-* into utilities
+ * (bg-brand, text-accent, …) and uses --font-sans / --radius-* as global
+ * defaults.
  */
 @theme {
-  /* Primary brand — solid buttons, primary actions, focus ring */
-  --color-brand: #111827;        /* swap for your brand color */
-  --color-brand-hover: #374151;  /* hover shade of the above */
+  /* Primary brand — solid buttons, primary actions, focus ring. Near-black:
+     主色即墨色，按钮与强调块用纯黑，白字。 */
+  --color-brand: #0e0e0e;
+  --color-brand-hover: #2b2b2b;
 
-  /* Body text. Tokenized alongside --color-paper: a theme that changes the page
-     colour must be able to change the text colour with it, and a hardcoded
-     utility on <body> beats anything a theme declares in the base layer. */
-  --color-ink: #111827;
+  /* Body text. */
+  --color-ink: #111111;
 
-  /* Accent — text links */
-  --color-accent: #2563eb;
+  /* Accent — the ONE restrained signal colour: LIVE/精选标签、链接 hover、
+     价格强调。除这几处外不使用，保持黑白基调。 */
+  --color-accent: #d90429;
 
-  /* Surfaces — warm paper background + hairline rules (editorial minimal) */
-  --color-paper: #faf8f4;
-  --color-line: #e7e2d9;
+  /* Surfaces — clean white paper + hairline rules (editorial minimal). */
+  --color-paper: #ffffff;
+  --color-line: #e4e4e4;
 
-  /* Raised panels: cards, form wells, the checkout summary. Distinct from
-     `paper` so a panel can sit *on* the page rather than dissolving into it. */
-  --color-surface: #ffffff;
+  /* Raised panels: cards, form wells, the checkout summary. */
+  --color-surface: #f6f6f4;
 
-  /* Secondary and tertiary text. Two levels, not one — the storefront leans on
-     the distinction between a supporting line and an incidental one, and
-     collapsing them flattens every summary and product meta block.
+  /* Secondary and tertiary text. Both clear 4.5:1 on `surface`. */
+  --color-muted: #555555;
+  --color-faint: #8c8c8c;
 
-     Both clear 4.5:1 on `surface`. `faint` was gray-400 in a dozen places
-     before these became tokens, which is 2.6:1 on white — legible to us,
-     invisible to anyone else. */
-  --color-muted: #4b5563;
-  --color-faint: #6b7280;
-
-  /* Label colour on a `brand` fill. A token rather than a hardcoded white,
-     because a theme is free to pick a light brand — and then white fails
-     contrast on every primary button at once. */
+  /* Label colour on a `brand` fill. */
   --color-on-brand: #ffffff;
 
-  /* Typography — sans body + a characterful system serif for display (no webfont) */
+  /* Typography — sans for UI/commerce, high-contrast serif for editorial
+     display (magazine headlines). Chinese fallbacks keep the system robust
+     without webfonts: PingFang/YaHei for sans, Songti for serif display. */
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-    Helvetica, Arial, sans-serif;
+    Helvetica, Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    sans-serif;
   --font-serif: 'Hoefler Text', 'Iowan Old Style', 'Palatino Linotype', Palatino,
-    Georgia, 'Times New Roman', serif;
+    Georgia, 'Songti SC', 'Noto Serif SC', 'SimSun', 'Times New Roman', serif;
 
-  /* Corner radius (Tailwind defaults, surfaced here for one-place editing) */
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
+  /* Corner radius — sharp. 精品买手店质感，拒绝圆角 SaaS 感。 */
+  --radius-md: 0px;
+  --radius-lg: 0px;
 }
 
 /*
- * Content-page prose scale.
+ * Content-page prose scale + page container.
  *
- * Ordinary custom properties, intentionally OUTSIDE @theme: the core
- * `.markdown-content` rules consume them directly, and they define no Tailwind
- * utility namespace. Moving them into @theme would imply a utility-token role
- * they do not have.
- *
- * Every rule that reads one also carries today's value as its final fallback,
- * so deleting a line here — or replacing this whole file with a design system's
- * tokens — degrades to the current design rather than to browser defaults.
+ * Ordinary custom properties, intentionally OUTSIDE @theme. Every rule that
+ * reads one also carries today's value as its final fallback, so deleting a
+ * line here degrades to the current design rather than to browser defaults.
  */
-/* Page container. The default is a centred editorial column. */
 :root {
-  --page-max: 72rem;
-  --page-pad-x: 1.5rem;
-  --page-pad-y: 3rem;
+  --page-max: 84rem;
+  --page-pad-x: 1.25rem;
+  --page-pad-y: 2.5rem;
 }
 
 :root {
-  --prose-measure: 48rem;
-  --prose-leading: 1.75;
-  --prose-h1-size: 2.25rem;
+  --prose-measure: 46rem;
+  --prose-leading: 1.85;
+  --prose-h1-size: 2.5rem;
   --prose-h1-tracking: -0.02em;
   --prose-h2-size: 1.5rem;
   --prose-h2-tracking: -0.01em;
   --prose-h3-size: 1.125rem;
+}
+
+/* HYPEBEN editorial extras — consumed by store-owned templates. */
+:root {
+  /* 编辑部大标题字重（sans display 时用 900 拉满） */
+  --display-weight: 800;
+  /* 频道标签字号 */
+  --kicker-size: 0.6875rem;
+  --kicker-tracking: 0.22em;
 }

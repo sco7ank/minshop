@@ -95,7 +95,9 @@ const detail = (overrides: Partial<ProductDetailModel> = {}): ProductDetailModel
   images: [],
   heroImage: { ...image('/images/tee.jpg'), priority: true },
   related: [],
-  backHref: '/',
+  brand: null,
+  stories: [],
+  backHref: '/products',
   error: null,
   ...overrides,
 });
@@ -343,6 +345,7 @@ describe('an independently authored product page', () => {
             image: image('/images/other.jpg'),
             formattedPrice: '$12.00',
             inStock: true,
+            brand: null,
           },
         ],
       }),

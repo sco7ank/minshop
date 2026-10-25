@@ -38,7 +38,7 @@ const showAny = model.showAddToCart || model.showBuyNow;
         {model.variants.length > 0 && (
           <fieldset class="mb-6">
             <legend class="mb-2 text-xs uppercase tracking-widest text-muted">
-              {model.variantLabel || 'Option'}
+              {model.variantLabel || '规格'}
             </legend>
             <div class="flex flex-col gap-2">
               {model.variants.map((variant) => (
@@ -63,7 +63,7 @@ const showAny = model.showAddToCart || model.showBuyNow;
                     />
                     <span>
                       {variant.label}
-                      {variant.soldOut && ' — sold out'}
+                      {variant.soldOut && ' — 已售罄'}
                     </span>
                   </span>
                   <span class="tabular-nums text-muted">{variant.formattedPrice}</span>
@@ -75,7 +75,7 @@ const showAny = model.showAddToCart || model.showBuyNow;
 
         {model.extras.length > 0 && (
           <fieldset class="mb-6">
-            <legend class="mb-2 text-xs uppercase tracking-widest text-muted">Add-ons</legend>
+            <legend class="mb-2 text-xs uppercase tracking-widest text-muted">加购选项</legend>
             <div class="flex flex-col gap-2">
               {model.extras.map((extra) => (
                 <label class="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-line px-4 py-2.5 text-sm transition hover:border-brand">
@@ -98,7 +98,7 @@ const showAny = model.showAddToCart || model.showBuyNow;
 
         {model.soldOut ? (
           <span class="inline-block cursor-not-allowed rounded-md border border-line px-8 py-3 text-sm font-medium uppercase tracking-wider text-faint">
-            Sold out
+            已售罄
           </span>
         ) : (
           <div class="flex flex-wrap gap-3">
@@ -107,7 +107,7 @@ const showAny = model.showAddToCart || model.showBuyNow;
                 type="submit"
                 class="rounded-md border border-line px-8 py-3 text-sm font-medium uppercase tracking-wider text-muted transition hover:border-brand hover:text-brand"
               >
-                Add to cart
+                加入购物袋
               </button>
             )}
             {model.showBuyNow && (
@@ -118,7 +118,7 @@ const showAny = model.showAddToCart || model.showBuyNow;
                 data-fullpage
                 class="rounded-md bg-brand px-8 py-3 text-sm font-medium uppercase tracking-wider text-on-brand transition hover:bg-brand-hover"
               >
-                Buy now
+                立即购买
               </button>
             )}
           </div>
@@ -128,7 +128,7 @@ const showAny = model.showAddToCart || model.showBuyNow;
       <div class="mt-10 flex gap-3">
         {model.soldOut && (
           <span class="cursor-not-allowed rounded-md border border-line px-8 py-3 text-sm font-medium uppercase tracking-wider text-faint">
-            Sold out
+            已售罄
           </span>
         )}
         {!model.soldOut && model.showAddToCart && (
@@ -139,7 +139,7 @@ const showAny = model.showAddToCart || model.showBuyNow;
               type="submit"
               class="rounded-md border border-line px-8 py-3 text-sm font-medium uppercase tracking-wider text-muted transition hover:border-brand hover:text-brand"
             >
-              Add to cart
+              加入购物袋
             </button>
           </form>
         )}
@@ -150,7 +150,7 @@ const showAny = model.showAddToCart || model.showBuyNow;
               type="submit"
               class="rounded-md bg-brand px-8 py-3 text-sm font-medium uppercase tracking-wider text-on-brand transition hover:bg-brand-hover"
             >
-              Buy now
+              立即购买
             </button>
           </form>
         )}

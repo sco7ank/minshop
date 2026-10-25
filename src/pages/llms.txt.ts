@@ -6,6 +6,9 @@ import { getConfig, formatPrice } from '../config';
 import { listProducts, countProducts } from '../features/products/db';
 import { listCategories } from '../features/categories/db';
 import { listPublishedPages } from '../features/pages/db';
+import { listPublishedArticles } from '../features/articles/db';
+import { listPublishedBrands } from '../features/brands/db';
+import { ARTICLE_CATEGORIES } from '../features/articles/taxonomy';
 import { publicOrigin } from '../features/http/origin';
 
 export const prerender = false;
@@ -30,6 +33,11 @@ export const GET: APIRoute = async ({ url }) => {
   const products = total > 0 ? await listProducts(env.DB, total, 0) : [];
   const categories = await listCategories(env.DB);
   const pages = await listPublishedPages(env.DB);
+  // HYPEBEN 资讯中心：已发布文章与品牌。
+  const [articlesPage, brands] = await Promise.all([
+    listPublishedArticles(env.DB, { limit: 500, offset: 0 }),
+    listPublishedBrands(env.DB),
+  ]);
 
   const productLines = products.map((p) => {
     const desc = oneLine(p.description ? markdownExcerpt(p.description, 300) : null);
@@ -47,6 +55,16 @@ export const GET: APIRoute = async ({ url }) => {
   // context an agent needs that the catalog itself doesn't carry.
   const pageLines = pages.map((p) => `- [${linkText(p.title)}](${origin}/pages/${p.slug})`);
 
+  // 编辑部资讯：文章按频道分组，品牌单列。
+  const articleLines = articlesPage.articles.map((a) => {
+    const channel = ARTICLE_CATEGORIES.find((c) => c.slug === a.category)?.label ?? a.category;
+    const desc = oneLine(a.excerpt || null);
+    return `- [${linkText(a.title)}](${origin}/articles/${a.slug}): ${channel}${a.author ? ` · ${a.author}` : ''}${desc ? ` — ${desc}` : ''}`;
+  });
+  const brandLines = brands.map(
+    (b) => `- [${linkText(b.name)}](${origin}/brands/${b.slug})${b.description ? `: ${oneLine(b.description)}` : ''}`,
+  );
+
   // Optional: this store's MCP endpoint, when one is deployed. The MCP server is
   // a SEPARATE Worker whose hostname the storefront cannot derive — they share a
   // database, not a config — and many instances never deploy it. So it is
@@ -59,7 +77,7 @@ export const GET: APIRoute = async ({ url }) => {
 
   const body = `# ${storeName}
 
-> ${storeName} is an online store you can browse and purchase from programmatically. All prices are in ${currency.toUpperCase()}. This file follows the llms.txt convention (https://llmstxt.org). Catalog and category links are live; an agent can complete a purchase via the JSON checkout endpoint under "For agents".
+> ${storeName} is a streetwear media × commerce site you can browse and purchase from programmatically. All prices are in ${currency.toUpperCase()}. This file follows the llms.txt convention (https://llmstxt.org). Catalog, category, editorial, and brand links are live; an agent can complete a purchase via the JSON checkout endpoint under "For agents".
 
 ## Products
 ${productLines.length > 0 ? productLines.join('\n') : '- (no products listed)'}
@@ -67,12 +85,14 @@ ${productLines.length > 0 ? productLines.join('\n') : '- (no products listed)'}
 ## Categories
 ${categoryLines.length > 0 ? categoryLines.join('\n') : '- (no categories)'}
 ${pageLines.length > 0 ? `\n## Pages\n${pageLines.join('\n')}\n` : ''}
+${articleLines.length > 0 ? `\n## Editorial (articles)\n${articleLines.join('\n')}\n` : ''}
+${brandLines.length > 0 ? `\n## Brands\n${brandLines.join('\n')}\n` : ''}
 ## For agents
 - [List payment methods](${origin}/api/checkout): \`GET\` → \`{ available_methods, default }\`.
 - [Browse the catalog as JSON](${origin}/api/products): \`GET\` (\`?q=\`, \`?limit=\`, \`?offset=\`) → products with prefixed public IDs (\`id: "prod_…"\`; the detail route \`/api/products/<slug>\` adds variants \`var_…\` and extras \`xtra_…\`).
 - [Create a checkout](${origin}/api/checkout): \`POST\` with \`Content-Type: application/json\`, body \`{ "items": [{ "product_id": "prod_…", "quantity": number, "variant_id"?: "var_…", "extra_ids"?: ["xtra_…"] }], "method"?: string }\` → \`{ "checkout_url": string, "order_status_url": string }\`. IDs are the catalog's prefixed public IDs; \`slug\` is accepted in place of \`product_id\` as a convenience. Numeric IDs are rejected with 400. Pricing and stock are resolved server-side; CORS is open for browser-based callers. Poll \`order_status_url\` for \`confirming | expired | paid | refunded\`; a paid item may include a token-protected \`download_url\`. After submitting payment, keep polling through \`expired\` until \`paid\` or HTTP 410 because verified settlement can arrive late.
 - [Search the catalog](${origin}/search?q=): append a query, e.g. \`/search?q=leather\`. Keyword + semantic matching.
-- [Sitemap](${origin}/sitemap.xml): every product, category, and page URL.${mcpLine}
+- [Sitemap](${origin}/sitemap.xml): every product, category, page, article, and brand URL.${mcpLine}
 `;
 
   return new Response(body, {

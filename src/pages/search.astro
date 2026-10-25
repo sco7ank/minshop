@@ -63,11 +63,11 @@ const cards = products.map((product, i) =>
 const fillerCards = fillers.map((product) => buildProductCard(product, cardOptions));
 ---
 
-<Layout title={q ? `Search: ${q}` : 'Search'}>
+<Layout title={q ? `搜索：${q}` : '搜索'}>
   <div class="mb-8">
-    <p class="text-xs uppercase tracking-[0.25em] text-muted">Search</p>
+    <p class="text-xs uppercase tracking-[0.25em] text-muted">搜索</p>
     <h1 class="mt-2 font-serif text-4xl tracking-tight sm:text-5xl">
-      {q ? q : 'Find something'}
+      {q ? q : '找点好东西'}
     </h1>
   </div>
 
@@ -76,8 +76,8 @@ const fillerCards = fillers.map((product) => buildProductCard(product, cardOptio
       type="search"
       name="q"
       value={q}
-      placeholder="Search products…"
-      aria-label="Search products"
+      placeholder="搜索商品…"
+      aria-label="搜索商品"
       autofocus={!q}
       class="w-full border-0 border-b border-line bg-transparent px-1 py-2 text-base transition-colors focus:border-brand focus:outline-none"
     />
@@ -87,12 +87,11 @@ const fillerCards = fillers.map((product) => buildProductCard(product, cardOptio
     q &&
       (autoCorrected ? (
         <p class="mb-8 text-sm text-muted">
-          No matches for “{q}” — showing results for{' '}
-          <strong class="font-medium text-ink">{suggestion}</strong>.
+          没有找到与“{q}”匹配的结果——以下为「{suggestion}」的搜索结果。
         </p>
       ) : products.length > 0 ? (
         <p class="mb-8 text-xs uppercase tracking-widest text-muted">
-          {total} result{total === 1 ? '' : 's'} for “{q}”
+          “{q}” 的结果共 {total} 条
         </p>
       ) : null)
   }
@@ -111,7 +110,7 @@ const fillerCards = fillers.map((product) => buildProductCard(product, cardOptio
     fillers.length > 0 && (
       <>
         <p class="mb-8 mt-16 text-xs uppercase tracking-widest text-muted">
-          More from these categories
+          来自同分类的更多商品
         </p>
         <ul class="grid grid-cols-2 gap-x-6 gap-y-12 lg:grid-cols-3">
           {fillerCards.map((card, i) => (
@@ -124,7 +123,7 @@ const fillerCards = fillers.map((product) => buildProductCard(product, cardOptio
 
   {
     q && products.length === 0 && (
-      <p class="text-muted">No products match “{q}”. Try a different word.</p>
+      <p class="text-muted">没有与“{q}”匹配的商品，换个关键词试试。</p>
     )
   }
 

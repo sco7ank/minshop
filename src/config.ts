@@ -187,7 +187,7 @@ function deepMerge<T>(base: T, override: DeepPartial<T>): T {
 /** Upstream defaults. Don't edit these per-store — override in `store.config.ts`. */
 function defaultConfig(): SiteConfig {
   return {
-    storeName: env.STORE_NAME ?? 'My Shop',
+    storeName: env.STORE_NAME ?? 'HYPEBEN',
     currency: 'usd', // store-wide currency (ISO 4217, lowercase)
     timeZone: env.TIME_ZONE ?? 'UTC', // setup/admin settings can override this at runtime
     features: {

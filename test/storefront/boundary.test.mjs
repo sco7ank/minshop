@@ -111,6 +111,8 @@ describe('storefront boundary check', () => {
   it('scans every set, not only the selected one', async () => {
     // If the checker followed the active selection, an invalid set could sit in
     // the tree unexamined until some later run happened to select it.
+    // Two full scans of the real storefront: under a parallel suite the process
+    // spawns cost more than the default 5s, so this one gets room.
     const withDefault = await check();
     process.env.THEME = 'default';
     const withExplicit = await check();
@@ -118,7 +120,7 @@ describe('storefront boundary check', () => {
 
     expect(withDefault.output).toBe(withExplicit.output);
     expect(withDefault.ok).toBe(true);
-  });
+  }, 30_000);
 
   it('allows a control to use a pure helper', async () => {
     // The whole point of the second policy: controls encapsulate core behavior,

@@ -63,6 +63,8 @@ export interface ProductCardOptions extends StorefrontImageOptions {
    * pass the store's configured currency.
    */
   currency: string;
+  /** Brand display name, or null when the product has no brand link. */
+  brand?: string | null;
 }
 
 /**
@@ -85,5 +87,6 @@ export function buildProductCard(
     // Availability only — never the count. `stockState` is the authoritative
     // classification; re-deriving `stock > 0` here would fork that rule.
     inStock: stockState(product.stock) !== 'out',
+    brand: options.brand ?? null,
   };
 }

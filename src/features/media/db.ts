@@ -135,6 +135,15 @@ export async function deleteMediaRecord(
             SELECT 1 FROM page_media WHERE page_media.media_id = media.id
           )
           AND NOT EXISTS (
+            SELECT 1 FROM article_media WHERE article_media.media_id = media.id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM articles WHERE articles.cover_image_key = media.image_key
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM brands WHERE brands.logo_image_key = media.image_key
+          )
+          AND NOT EXISTS (
             SELECT 1 FROM settings
              WHERE settings.key = 'logo_image_key' AND settings.value = media.image_key
           )

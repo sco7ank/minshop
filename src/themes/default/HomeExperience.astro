@@ -1,0 +1,236 @@
+---
+import type { HomeExperienceModel } from '../../features/storefront/models';
+import StoreImage from '../../features/storefront/controls/StoreImage.astro';
+import ProductCard from './ProductCard.astro';
+
+/**
+ * STORE-OWNED. Edit freely — this file belongs to your store.
+ *
+ * HYPEBEN DISCOVER 首页：编辑部头条 + 编辑精选 + 最新资讯 + 新品商品轨 +
+ * 品牌条 + 购物频道。模型已解析全部 URL/日期/频道标签；本组件只决定排版。
+ *
+ * 空库降级：没有任何文章时渲染杂志式 masthead（不含虚构数据），文章/商品
+ * 轨按有无内容整体隐藏。
+ */
+interface Props {
+  model: HomeExperienceModel;
+}
+
+const { model } = Astro.props;
+const hasStories = model.lead !== null;
+const hasProducts = model.products.length > 0;
+const hasBrands = model.brands.length > 0;
+const hasCategories = model.categories.length > 0;
+const lead = model.lead;
+---
+
+{
+  !hasStories && (
+    /* 空态 masthead：不虚构内容，用品牌定位语 + 双模式入口引导。 */
+    <section class="reveal border-b border-line pb-16 pt-10">
+      <p class="text-[0.6875rem] font-medium uppercase tracking-[0.22em] text-accent">
+        潮流媒体 × 潮流电商
+      </p>
+      <h1 class="mt-4 text-5xl leading-[0.95] tracking-tight text-ink sm:text-7xl" style="font-weight: var(--display-weight)">
+        看懂潮流，<br />穿进潮流。
+      </h1>
+      <p class="mt-6 max-w-xl text-base leading-relaxed text-muted">
+        编辑部每日精选球鞋、时装、艺术与音乐现场的一手报道，买手店同步上架报道中提到的每一件单品。
+      </p>
+      <div class="mt-8 flex flex-wrap gap-4">
+        <a
+          href="/products"
+          class="bg-brand px-8 py-3 text-xs font-medium uppercase tracking-[0.2em] text-on-brand transition-colors hover:bg-brand-hover"
+        >
+          进入商城
+        </a>
+        <a
+          href="/articles"
+          class="border border-brand px-8 py-3 text-xs font-medium uppercase tracking-[0.2em] text-brand transition-colors hover:bg-brand hover:text-on-brand"
+        >
+          阅读资讯
+        </a>
+      </div>
+    </section>
+  )
+}
+
+{
+  hasStories && lead && (
+    /* 头条：杂志式大图 + 大标题。 */
+    <section class="reveal border-b border-line pb-14 pt-4">
+      <a href={lead.href} class="group grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-center">
+        <div class="relative overflow-hidden bg-surface">
+          {
+            lead.image ? (
+              <StoreImage
+                image={lead.image}
+                class="aspect-[4/3] w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+              />
+            ) : (
+              <div class="aspect-[4/3] w-full bg-surface" aria-hidden="true" />
+            )
+          }
+        </div>
+        <div>
+          <a
+            href={`/articles?category=${lead.categorySlug}`}
+            class="text-[0.6875rem] font-medium uppercase tracking-[0.22em] text-accent hover:underline"
+          >
+            {lead.category}
+          </a>
+          <h1 class="mt-3 text-4xl leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-6xl" style="font-weight: var(--display-weight)">
+            {lead.title}
+          </h1>
+          <p class="mt-5 max-w-xl text-base leading-relaxed text-muted">{lead.excerpt}</p>
+          <p class="mt-6 text-xs uppercase tracking-widest text-faint">
+            {lead.author}{lead.date ? ` · ${lead.date}` : ''}
+          </p>
+          <span class="mt-6 inline-block border-b border-brand pb-1 text-xs font-medium uppercase tracking-[0.2em] text-brand">
+            阅读全文
+          </span>
+        </div>
+      </a>
+    </section>
+  )
+}
+
+{
+  model.featured.length > 0 && (
+    /* 编辑精选：次级大图位。 */
+    <section class="border-b border-line py-12">
+      <div class="mb-8 flex items-baseline justify-between border-b border-line pb-3">
+        <h2 class="text-xs font-medium uppercase tracking-[0.25em] text-ink">编辑精选</h2>
+        <a href="/articles" class="text-xs uppercase tracking-widest text-faint hover:text-brand">全部资讯 →</a>
+      </div>
+      <ul class="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+        {model.featured.map((card, i) => (
+          <li class="reveal group" style={`animation-delay:${Math.min(i, 8) * 60}ms`}>
+            <a href={card.href} class="block">
+              <div class="relative overflow-hidden bg-surface">
+                {card.image ? (
+                  <StoreImage
+                    image={card.image}
+                    fade
+                    class="aspect-[4/3] w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+                  />
+                ) : (
+                  <div class="aspect-[4/3] w-full bg-surface" aria-hidden="true" />
+                )}
+              </div>
+              <p class="mt-4 text-[0.6875rem] font-medium uppercase tracking-[0.22em] text-accent">
+                {card.category}
+              </p>
+              <h3 class="mt-2 text-lg font-medium leading-snug tracking-tight text-ink group-hover:underline">
+                {card.title}
+              </h3>
+              <p class="mt-2 text-xs text-faint">
+                {card.author}{card.date ? ` · ${card.date}` : ''}
+              </p>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+{
+  model.latest.length > 0 && (
+    /* 最新资讯：编辑部编号列表。 */
+    <section class="border-b border-line py-12">
+      <div class="mb-8 flex items-baseline justify-between border-b border-line pb-3">
+        <h2 class="text-xs font-medium uppercase tracking-[0.25em] text-ink">最新资讯</h2>
+        <a href="/articles" class="text-xs uppercase tracking-widest text-faint hover:text-brand">全部资讯 →</a>
+      </div>
+      <ol class="divide-y divide-line">
+        {model.latest.map((card, i) => (
+          <li class="reveal" style={`animation-delay:${Math.min(i, 8) * 40}ms`}>
+            <a href={card.href} class="group flex items-baseline gap-5 py-5">
+              <span class="w-8 shrink-0 text-sm tabular-nums text-faint">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-base font-medium leading-snug tracking-tight text-ink group-hover:underline sm:text-lg">
+                  {card.title}
+                </span>
+                <span class="mt-1 block text-xs text-faint">
+                  {card.category} · {card.author}{card.date ? ` · ${card.date}` : ''}
+                </span>
+              </span>
+              <span class="hidden shrink-0 text-xs uppercase tracking-widest text-faint sm:block">阅读 →</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
+{
+  hasProducts && (
+    /* 新品上架：商品轨，复用商品卡片。 */
+    <section class="border-b border-line py-12">
+      <div class="mb-8 flex items-baseline justify-between border-b border-line pb-3">
+        <h2 class="text-xs font-medium uppercase tracking-[0.25em] text-ink">新品上架</h2>
+        <a href="/products" class="text-xs uppercase tracking-widest text-faint hover:text-brand">进入商城 →</a>
+      </div>
+      <ul class="grid grid-cols-2 gap-x-6 gap-y-12 lg:grid-cols-4">
+        {model.products.map((card, i) => (
+          <ProductCard card={card} index={i} headingLevel="h3" />
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+{
+  (hasBrands || hasCategories) && (
+    <section class="grid gap-12 py-12 lg:grid-cols-2">
+      {
+        hasBrands && (
+          <div>
+            <div class="mb-6 flex items-baseline justify-between border-b border-line pb-3">
+              <h2 class="text-xs font-medium uppercase tracking-[0.25em] text-ink">品牌</h2>
+              <a href="/brands" class="text-xs uppercase tracking-widest text-faint hover:text-brand">全部品牌 →</a>
+            </div>
+            <ul class="flex flex-wrap gap-x-6 gap-y-3">
+              {model.brands.map((brand, i) => (
+                <li class="reveal" style={`animation-delay:${Math.min(i, 8) * 40}ms`}>
+                  <a
+                    href={brand.href}
+                    class="text-sm font-medium uppercase tracking-widest text-ink hover:text-accent"
+                  >
+                    {brand.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+      {
+        hasCategories && (
+          <div>
+            <div class="mb-6 flex items-baseline justify-between border-b border-line pb-3">
+              <h2 class="text-xs font-medium uppercase tracking-[0.25em] text-ink">购物频道</h2>
+              <a href="/products" class="text-xs uppercase tracking-widest text-faint hover:text-brand">全部商品 →</a>
+            </div>
+            <ul class="flex flex-wrap gap-3">
+              {model.categories.map((category, i) => (
+                <li class="reveal" style={`animation-delay:${Math.min(i, 8) * 40}ms`}>
+                  <a
+                    href={category.href}
+                    class="inline-block border border-line px-4 py-2 text-xs uppercase tracking-widest text-muted transition-colors hover:border-brand hover:text-brand"
+                  >
+                    {category.text}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+    </section>
+  )
+}

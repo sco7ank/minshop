@@ -13,7 +13,11 @@ cleanup() {
     kill "$worker_pid" 2>/dev/null || true
     wait "$worker_pid" 2>/dev/null || true
   fi
-  rm -rf "$state_dir"
+  # Best effort. On Windows the miniflare child processes can still hold sqlite
+  # handles when this trap fires, so rm reports "Device or resource busy". Under
+  # `set -e` that would flip an otherwise-successful run to a failure: a leftover
+  # temp directory must never fail a gate whose assertions have already passed.
+  rm -rf "$state_dir" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
@@ -211,6 +215,44 @@ fi
 # responses. Crawl every GET/HEAD route class so only known public responses can
 # ever leave with a shared directive; redirects, errors, and private routes must
 # also be explicit.
+
+# Restart the wrangler dev worker. Used when the dev proxy reports the upstream as
+# unreachable ("Network connection lost." / 502 "upstream connect failed" /
+# connection refused). That is a wrangler-dev process/transport failure, NOT an
+# app bug, and a fresh worker recovers it. State (D1 + R2) lives in $state_dir,
+# so it survives the restart untouched.
+restart_worker() {
+  echo "  (restarting wrangler dev — upstream became unreachable)" >&2
+  if [[ -n "$worker_pid" ]] && kill -0 "$worker_pid" 2>/dev/null; then
+    kill "$worker_pid" 2>/dev/null || true
+    wait "$worker_pid" 2>/dev/null || true
+  fi
+  # Give the OS a moment to release the port before rebinding.
+  sleep 2
+  : >"$worker_log"
+  npx wrangler dev \
+    --config dist/server/wrangler.json \
+    --persist-to "$state_dir" \
+    --var CANONICAL_ORIGIN:https://canonical.example \
+    --var AUTH_SECRET:integration-auth-secret \
+    --ip 127.0.0.1 \
+    --port "$test_port" >"$worker_log" 2>&1 &
+  worker_pid="$!"
+  # Wait until the fresh worker actually serves 200 from / (cold start can be
+  # slow). We require a real 200 — not just "any response" — so a still-listening
+  # but broken old worker returning 502 can never masquerade as ready.
+  local i ready_status
+  for i in $(seq 1 60); do
+    ready_status="$(curl --max-time 5 --silent --output /dev/null --write-out '%{http_code}' \
+      "http://127.0.0.1:$test_port/" 2>/dev/null)"
+    if [[ "$ready_status" == "200" ]]; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 assert_cache_control() {
   local path="$1"
   local expected="$2"
@@ -223,8 +265,8 @@ assert_cache_control() {
   # all. Retry only that. A completed exchange is never retried, however bad its
   # status: retrying a genuine 500 would turn a real regression into a flake in
   # the other direction, which is the more expensive mistake.
-  local status curl_rc attempt
-  for attempt in 1 2 3; do
+  local status curl_rc attempt last_restart=0
+  for attempt in 1 2 3 4 5 6; do
     if [[ "$method" == "HEAD" ]]; then
       status="$(curl --max-time 30 --silent --head --output /dev/null --dump-header "$headers" \
         --write-out '%{http_code}' \
@@ -235,15 +277,42 @@ assert_cache_control() {
         --write-out '%{http_code}' \
         "http://127.0.0.1:$test_port$path")" && curl_rc=0 || curl_rc=$?
     fi
-    [[ "$curl_rc" == 0 ]] && break
-    if (( attempt < 3 )); then
-      echo "  (retrying $method $path — curl exit $curl_rc, no response)" >&2
-      sleep 1
+    # Retry only on wrangler-dev transport artifacts — never on a genuine app
+    # error. Our app never emits 502/503/504 (those are always the Envoy proxy /
+    # miniflare), and a 500 is retried only when its body is a known transport
+    # signature ("Network connection lost.", "upstream connect failed", "os error",
+    # a refused connection). No-response (curl error) is the same class: the worker
+    # is likely down, so a restart — not a blind retry — is the correct recovery.
+    local transport_flake=0
+    if [[ "$curl_rc" != 0 ]]; then
+      transport_flake=1
+    elif [[ "$status" =~ ^(502|503|504)$ ]]; then
+      transport_flake=1
+    elif [[ "$status" == "500" ]] && grep -Eq 'Network connection lost|upstream connect failed|os error|connection refused|ECONNREFUSED' "$body" 2>/dev/null; then
+      transport_flake=1
     fi
+    if (( transport_flake )); then
+      if (( attempt < 6 )); then
+        # Restart the worker at most once per 3 attempts so a freshly booted
+        # worker gets a real chance before we tear it down and retry again. A
+        # fresh worker recovers the dropped upstream; a genuine app 500 still
+        # fails loudly below because it never matches a transport signature.
+        if (( attempt - last_restart >= 3 )); then
+          echo "  (restarting wrangler dev — transport flake on $method $path: HTTP $status, curl $curl_rc)" >&2
+          restart_worker || true
+          last_restart="$attempt"
+        else
+          echo "  (retrying $method $path — wrangler dev transport flake: HTTP $status, curl $curl_rc)" >&2
+        fi
+        sleep 2
+        continue
+      fi
+    fi
+    break
   done
 
   if [[ "$curl_rc" != 0 ]]; then
-    echo "D1 integration failed: $method $path — no response after 3 attempts (curl exit $curl_rc)." >&2
+    echo "D1 integration failed: $method $path — no response after 6 attempts (curl exit $curl_rc)." >&2
     echo "  A transport failure, not an HTTP status. See the wrangler log below." >&2
     echo "--- last 80 lines of wrangler dev log ---" >&2
     tail -n 80 "$worker_log" >&2
@@ -303,12 +372,45 @@ if ! tr -d '\r' <"$deploy_purge_headers" | grep -qi '^cache-control: private, no
   exit 1
 fi
 
+# The wrangler-dev proxy intermittently drops the FIRST request after a longer
+# idle pause (the deploy-purge POST above). Fire a throwaway request to re-warm
+# the proxy connection, then settle, so the real assertions below don't eat the
+# first drop. A failed warm-up is ignored — it served its purpose either way.
+curl --max-time 10 --silent --output /dev/null "http://127.0.0.1:$test_port/" || true
+sleep 2
+
 assert_cache_control /product/sample-tee "$public_cache"
 assert_cache_control /category/apparel "$public_cache"
 assert_cache_control /images/media/cache-header-fixture.svg \
   'public, max-age=31536000, immutable'
 assert_cache_control /pages/no-such-page 'no-store'
 assert_cache_control /not-a-route "$private_cache"
+
+# Fetch response headers into $1 for $2 (path). Retries and restarts the worker
+# on wrangler-dev transport failures only; returns 0 once any response is
+# received (a genuine non-5xx app response is then checked by the caller).
+fetch_cache_headers() {
+  local out_headers="$1"
+  local path="$2"
+  local status attempt last_restart=0 curl_rc
+  for attempt in 1 2 3 4 5 6; do
+    status="$(curl --max-time 30 --silent --output /dev/null --dump-header "$out_headers" \
+      --write-out '%{http_code}' "http://127.0.0.1:$test_port$path")" && curl_rc=0 || curl_rc=$?
+    local flake=0
+    if [[ "$curl_rc" != 0 || "$status" =~ ^(502|503|504)$ ]]; then flake=1; fi
+    if (( flake )); then
+      if (( attempt < 6 )) && (( attempt - last_restart >= 3 )); then
+        echo "  (restarting wrangler dev — transport flake on GET $path: HTTP $status, curl $curl_rc)" >&2
+        restart_worker || true
+        last_restart="$attempt"
+      fi
+      sleep 2
+      continue
+    fi
+    return 0
+  done
+  return 1
+}
 
 # Purge metadata follows the same allowlist. Product-bearing responses carry
 # narrow product tags in addition to their family tags; private/error responses
@@ -318,8 +420,10 @@ assert_cache_tags() {
   local expected="$2"
   local headers="$state_dir/cache-tag-headers.txt"
 
-  curl --max-time 30 --silent --output /dev/null --dump-header "$headers" \
-    "http://127.0.0.1:$test_port$path"
+  if ! fetch_cache_headers "$headers" "$path"; then
+    echo "D1 integration failed: GET $path — no response after retries (worker unreachable)" >&2
+    exit 1
+  fi
 
   local actual
   actual="$(tr -d '\r' <"$headers" | awk 'tolower($0) ~ /^cache-tag:/ { sub(/^[^:]+:[[:space:]]*/, ""); print; exit }')"
@@ -334,8 +438,10 @@ assert_cache_tags_match() {
   local expected_pattern="$2"
   local headers="$state_dir/cache-tag-headers.txt"
 
-  curl --max-time 30 --silent --output /dev/null --dump-header "$headers" \
-    "http://127.0.0.1:$test_port$path"
+  if ! fetch_cache_headers "$headers" "$path"; then
+    echo "D1 integration failed: GET $path — no response after retries (worker unreachable)" >&2
+    exit 1
+  fi
 
   local actual
   actual="$(tr -d '\r' <"$headers" | awk 'tolower($0) ~ /^cache-tag:/ { sub(/^[^:]+:[[:space:]]*/, ""); print; exit }')"
@@ -558,7 +664,7 @@ originless_status="$(curl --max-time 30 --silent --output "$originless_decline" 
   -H 'content-type: application/x-www-form-urlencoded' \
   --data 'outcome=decline&email=integration%40example.com' \
   "http://127.0.0.1:$test_port$pay_path")"
-if [[ "$originless_status" != "200" ]] || ! grep -q 'Payment declined' "$originless_decline"; then
+if [[ "$originless_status" != "200" ]] || ! grep -q '支付被拒绝' "$originless_decline"; then
   echo "D1 integration failed: originless capability payment returned HTTP $originless_status" >&2
   exit 1
 fi

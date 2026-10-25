@@ -1,0 +1,65 @@
+---
+import type { BrandsIndexModel } from '../../features/storefront/models';
+import StoreImage from '../../features/storefront/controls/StoreImage.astro';
+
+/**
+ * STORE-OWNED. Edit freely — this file belongs to your store.
+ *
+ * HYPEBEN 品牌索引：全部已发布品牌的网格（logo + 名称 + 简介 + 内容计数）。
+ * 无品牌时整体降级为空态文案，不虚构条目。
+ */
+interface Props {
+  model: BrandsIndexModel;
+}
+
+const { model } = Astro.props;
+---
+
+<div class="mb-10 border-b border-line pb-8">
+  <p class="text-[0.6875rem] font-medium uppercase tracking-[0.22em] text-accent">DISCOVER</p>
+  <h1 class="mt-3 text-4xl tracking-tight text-ink sm:text-5xl" style="font-weight: var(--display-weight)">
+    品牌
+  </h1>
+  <p class="mt-3 max-w-xl text-sm text-muted">
+    编辑部持续报道的品牌，与买手店在售单品一一对应。
+  </p>
+</div>
+
+{
+  model.brands.length === 0 && (
+    <p role="status" class="text-muted">
+      暂无品牌。
+    </p>
+  )
+}
+
+<ul class="grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+  {model.brands.map((brand, i) => (
+    <li class="reveal" style={`animation-delay:${Math.min(i, 8) * 60}ms`}>
+      <a href={brand.href} class="group block border border-line p-8 transition-colors hover:border-brand">
+        <div class="flex items-center gap-4">
+          {
+            brand.logo ? (
+              <StoreImage image={brand.logo} class="h-12 w-12 object-cover" />
+            ) : (
+              <div class="flex h-12 w-12 items-center justify-center bg-surface text-lg font-black text-ink" aria-hidden="true">
+                {brand.name.slice(0, 1)}
+              </div>
+            )
+          }
+          <h2 class="text-lg font-medium tracking-tight text-ink group-hover:underline">
+            {brand.name}
+          </h2>
+        </div>
+        {
+          brand.description && (
+            <p class="mt-4 line-clamp-3 text-sm leading-relaxed text-muted">{brand.description}</p>
+          )
+        }
+        <p class="mt-5 text-xs uppercase tracking-widest text-faint">
+          {brand.articleCount} 篇报道 · {brand.productCount} 件在售
+        </p>
+      </a>
+    </li>
+  ))}
+</ul>

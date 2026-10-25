@@ -2,34 +2,93 @@
 import type { StorefrontShellModel } from '../../features/storefront/models';
 
 /**
- * STORE-OWNED. Edit freely — this file belongs to your store.
+ * STORE-OWNED — HYPEBEN 页脚。
  *
- * Footer links come from the merchant's navigation menu, already filtered to
- * targets that are actually publishable, so nothing here can render a dead
- * link. Like the header, this renders on every page.
+ * 编辑部式多栏页脚：品牌声明 + 双模式入口 + 资讯频道 + 商品分类 + 运营菜单
+ * （D1 menu_items）。所有链接均指向真实路由。
  */
 interface Props {
   model: StorefrontShellModel;
 }
 
 const { model } = Astro.props;
+const isShop = model.mode === 'shop';
+
+const shopLinks = [
+  { text: '全部商品', href: '/products' },
+  ...model.categoryLinks,
+];
+const fallbackLinks = [
+  { text: '品牌', href: '/brands' },
+  { text: '搜索', href: '/search' },
+];
 ---
 
-<footer class="border-t border-line">
-  <div
-    class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-6 py-10 text-xs uppercase tracking-widest text-muted"
-  >
-    <span>&copy; {model.storeName}</span>
-    {
-      model.footerLinks.length > 0 && (
-        <nav aria-label="Footer" class="flex flex-wrap items-center gap-x-6 gap-y-3">
-          {model.footerLinks.map((link) => (
-            <a href={link.href} class="hover:text-brand">
-              {link.text}
-            </a>
+<footer class="mt-16 border-t border-line bg-surface">
+  <div class="mx-auto max-w-[92rem] px-4 py-12 sm:px-6">
+    <nav aria-label="页脚导航" class="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 品牌栏 */}
+      <div>
+        <p class="font-sans text-lg font-black uppercase tracking-tight">{model.storeName}</p>
+        <p class="mt-3 max-w-56 text-sm leading-relaxed text-muted">
+          潮流媒体 × 潮流电商。内容即商品的入口，商品也是内容的入口。
+        </p>
+        <div class="mt-5 flex items-center gap-4 text-xs uppercase tracking-widest">
+          <a href="/" class="text-muted hover:text-brand">资讯模式</a>
+          <span class="text-line">/</span>
+          <a href="/products" class="text-muted hover:text-brand">商城模式</a>
+        </div>
+      </div>
+
+      {/* 资讯频道 */}
+      <div>
+        <h2 class="text-xs uppercase tracking-[0.22em] text-faint">资讯频道</h2>
+        <ul class="mt-4 space-y-2.5 text-sm">
+          <li>
+            <a href="/articles" class="text-muted transition-colors hover:text-brand">全部资讯</a>
+          </li>
+          {model.channels.map((channel) => (
+            <li>
+              <a href={channel.href} class="text-muted transition-colors hover:text-brand">
+                {channel.text}
+              </a>
+            </li>
           ))}
-        </nav>
-      )
-    }
+        </ul>
+      </div>
+
+      {/* 商城分类 */}
+      <div>
+        <h2 class="text-xs uppercase tracking-[0.22em] text-faint">商城</h2>
+        <ul class="mt-4 space-y-2.5 text-sm">
+          {(shopLinks.length > 1 ? shopLinks : [{ text: '全部商品', href: '/products' }]).map((link) => (
+            <li>
+              <a href={link.href} class="text-muted transition-colors hover:text-brand">
+                {link.text}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* 运营菜单（D1） */}
+      <div>
+        <h2 class="text-xs uppercase tracking-[0.22em] text-faint">关于</h2>
+        <ul class="mt-4 space-y-2.5 text-sm">
+          {(model.footerLinks.length > 0 ? model.footerLinks : fallbackLinks).map((link) => (
+            <li>
+              <a href={link.href} class="text-muted transition-colors hover:text-brand">
+                {link.text}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </nav>
+
+    <div class="mt-12 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-line pt-6 text-xs uppercase tracking-widest text-faint">
+      <span>&copy; {model.storeName}</span>
+      <span>{isShop ? '商城模式' : '资讯模式'}</span>
+    </div>
   </div>
 </footer>

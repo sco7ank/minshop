@@ -7,20 +7,13 @@ import { publicOrigin } from '../../features/http/origin';
 /**
  * The catalog's own URL.
  *
- * `/` shows the catalog by default, but a store can point the home page at a
- * page or a single product — and then the product list had no address at all,
- * reachable only through search or a category. This is that address, and the
- * header links to it whenever the home page has been taken over.
- *
- * When `/` IS the catalog the two render the same thing, so this one canonicals
- * to `/` rather than competing with it for the same content.
+ * HYPEBEN: `/` is the DISCOVER editorial home, so the catalog lives here and
+ * only here — no canonical juggling against `/`, and the header's 商城 mode
+ * links straight to this address.
  */
-const homeIsOverridden = !!Astro.locals.settings?.homePage;
-const canonical = homeIsOverridden
-  ? undefined
-  : new URL('/', publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN)).href;
+const canonical = new URL('/products', publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN)).href;
 ---
 
-<Layout title="All products" canonical={canonical}>
-  <ProductList />
+<Layout title="全部商品" canonical={canonical}>
+  <ProductList eyebrow="商城" heading="全部商品" />
 </Layout>

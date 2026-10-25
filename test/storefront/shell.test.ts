@@ -21,6 +21,7 @@ const input = (overrides: Partial<ShellInput> = {}): ShellInput => ({
   searchQuery: '',
   cartEnabled: true,
   accountsEnabled: false,
+  mode: 'discover',
   ...overrides,
 });
 
@@ -68,6 +69,23 @@ describe('buildShellModel', () => {
     const model = buildShellModel(input({ announcement: 'Sale', announcementHref: '' }));
 
     expect(model.announcement?.href).toBeNull();
+  });
+
+  // HYPEBEN: the header toggle, mode nav, and footer channels are all data —
+  // the templates must not import taxonomy or path logic to render them.
+  it('carries the dual-mode switch labels and homes', () => {
+    const model = buildShellModel(input({ mode: 'shop' }));
+
+    expect(model.modeLabels).toEqual({ discover: '资讯', shop: '商城' });
+    expect(model.modeHomes).toEqual({ discover: '/', shop: '/products' });
+    expect(model.mode).toBe('shop');
+  });
+
+  it('carries the editorial channels for the discover-mode nav', () => {
+    const model = buildShellModel(input());
+
+    expect(model.channels.length).toBeGreaterThan(0);
+    expect(model.channels[0]).toMatchObject({ text: expect.any(String), href: expect.stringMatching(/^\/articles\?category=/) });
   });
 });
 
@@ -122,17 +140,21 @@ describe('the store-owned header', () => {
     expect(html).toContain('data-nav-disclosure');
   });
 
-  it('shows the mobile disclosure only when there is navigation to disclose', async () => {
+  it('discloses the mode navigation and any merchant links on small screens', async () => {
+    // HYPEBEN: the mode nav (资讯频道/商城分类) is intrinsic, so the disclosure
+    // exists even with no merchant menu items — merchant links join it.
     const without = await render(Header, buildShellModel(input()));
     const withLinks = await render(
       Header,
       buildShellModel(input({ headerItems: [menuItem('About', '/pages/about')] })),
     );
 
-    expect(without).not.toContain('data-nav-disclosure');
+    expect(without).toContain('data-nav-disclosure');
     expect(withLinks).toContain('data-nav-disclosure');
     expect(withLinks).toContain('<details');
-    expect(withLinks).toContain('aria-label="Menu"');
+    expect(withLinks).toContain('aria-label="菜单"');
+    // Merchant links are appended to the mode nav, not replacing it.
+    expect(withLinks).toContain('href="/articles"');
   });
 
   it('keeps navigation usable without JavaScript', async () => {
@@ -158,7 +180,7 @@ describe('the store-owned header', () => {
     expect(html).toContain('name="q"');
     expect(html).toContain('value="tee"');
     expect(html).toContain('role="search"');
-    expect(html).toContain('aria-label="Search products"');
+    expect(html).toContain('aria-label="搜索商品"');
   });
 
   it('renders the announcement link only when one is set', async () => {
@@ -226,15 +248,24 @@ describe('the store-owned footer', () => {
 
     expect(html).toContain('My Shop');
     expect(html).toContain('href="/pages/privacy"');
+    // HYPEBEN: one labelled landmark wraps the four editorial columns.
     // Labelled, but the label itself belongs to the design.
     expect(navCount(html)).toBe(1);
     expect(labelledNavs(html).length).toBe(1);
+    // The editorial columns are intrinsic: channels and the mode switch.
+    expect(html).toContain('href="/articles"');
+    expect(html).toContain('资讯模式');
   });
 
-  it('omits the footer nav entirely when there are no links', async () => {
+  it('falls back to brand and search links when the merchant set none', async () => {
+    // The HYPEBEN footer always renders — channels and categories are
+    // intrinsic — so the merchant column falls back instead of disappearing.
     const html = await render(Footer, buildShellModel(input()));
 
-    expect(navCount(html)).toBe(0);
+    expect(html).toContain('href="/brands"');
+    expect(html).toContain('href="/search"');
+    expect(html).not.toContain('href="/pages/privacy"');
+    expect(navCount(html)).toBe(1);
   });
 });
 

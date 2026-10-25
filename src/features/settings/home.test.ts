@@ -56,14 +56,11 @@ describe('serializeHomeTarget', () => {
 });
 
 describe('catalogPath', () => {
-  it('is / while the home page is the catalog', () => {
-    expect(catalogPath(null)).toBe('/');
-    expect(catalogPath('')).toBe('/');
-  });
-
-  it('is /products once the home page has been taken over', () => {
-    // Otherwise "back to shop" would send the shopper to the page or the single
-    // product that replaced the catalog, not to the products.
+  // HYPEBEN: `/` is the DISCOVER editorial home, so the catalog has one fixed
+  // address no matter what the homePage setting says.
+  it('is always /products in HYPEBEN mode', () => {
+    expect(catalogPath(null)).toBe('/products');
+    expect(catalogPath('')).toBe('/products');
     expect(catalogPath('page:1')).toBe('/products');
     expect(catalogPath('product:9')).toBe('/products');
   });

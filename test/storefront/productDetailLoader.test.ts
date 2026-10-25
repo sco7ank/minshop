@@ -46,6 +46,15 @@ vi.mock('../../src/features/categories/db', () => ({
   categoriesForProduct: vi.fn(async () => []),
   relatedProducts: vi.fn(async () => []),
 }));
+// HYPEBEN 双向关联：品牌链接与相关报道。加载器自己负责编排，这里的替身
+// 只回答「该商品挂了谁」，让公共 ID 断言继续盯住它真正要盯的东西。
+vi.mock('../../src/features/brands/db', () => ({
+  brandLinkForProduct: vi.fn(async () => null),
+  brandNamesForProducts: vi.fn(async () => new Map()),
+}));
+vi.mock('../../src/features/articles/db', () => ({
+  articlesForProduct: vi.fn(async () => []),
+}));
 vi.mock('../../src/features/search', () => ({
   getRelatedStored: vi.fn(async () => []),
   storeRelatedIds: vi.fn(async () => undefined),

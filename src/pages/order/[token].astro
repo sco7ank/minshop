@@ -44,33 +44,33 @@ const orderRef = order
 
 // Human label for the rail the order was paid on (NULL = legacy, hidden).
 const PAYMENT_LABELS: Record<string, string> = {
-  stripe: 'Card',
+  stripe: '银行卡',
   lightning: 'Lightning',
   opennode: 'Bitcoin',
-  demo: 'Demo (no charge)',
+  demo: '演示（未扣款）',
 };
 const paymentLabel = order?.payment_method ? PAYMENT_LABELS[order.payment_method] ?? null : null;
 // The catalog is at / until the home page is pointed elsewhere.
 const shopHref = catalogPath(Astro.locals.settings?.homePage);
 ---
 
-<Layout title={order ? 'Order confirmed' : 'Confirming your order'}>
+<Layout title={order ? '订单已确认' : '正在确认订单'}>
   {
     order ? (
       <Fragment>
-        <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">Thank you! Your order is confirmed.</h1>
+        <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">感谢下单！你的订单已确认。</h1>
         <p class="mb-6 text-sm text-muted">
-          Order #{orderRef}
-          {order.email && <Fragment> · a receipt is on its way to {order.email}</Fragment>}
+          订单号 #{orderRef}
+          {order.email && <Fragment> · 收据已发送至 {order.email}</Fragment>}
         </p>
 
         <div class="overflow-hidden rounded-lg border border-line bg-surface">
           <table class="w-full text-left text-sm">
             <thead class="bg-surface text-muted">
               <tr>
-                <th class="px-4 py-2 font-medium">Item</th>
-                <th class="px-4 py-2 font-medium">Qty</th>
-                <th class="px-4 py-2 font-medium">Total</th>
+                <th class="px-4 py-2 font-medium">商品</th>
+                <th class="px-4 py-2 font-medium">数量</th>
+                <th class="px-4 py-2 font-medium">小计</th>
               </tr>
             </thead>
             <tbody>
@@ -88,11 +88,11 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
         </div>
 
         <p class="mt-4 text-lg font-semibold">
-          Total: {formatPrice(order.amount_total_cents, order.currency)}
+          合计：{formatPrice(order.amount_total_cents, order.currency)}
         </p>
         {items.some((item) => item.file_key) && isAccessToken(token) && (
           <section class="mt-8 rounded-lg border border-line bg-surface p-5">
-            <h2 class="font-serif text-2xl">Downloads</h2>
+            <h2 class="font-serif text-2xl">下载</h2>
             <ul class="mt-3 space-y-3">
               {items.filter((item) => item.file_key && item.public_id).map((item) => (
                 <li class="flex flex-wrap items-center justify-between gap-3">
@@ -104,12 +104,12 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
                     )}
                   </span>
                   {order.refunded_cents >= order.amount_total_cents ? (
-                    <span class="text-sm text-muted">Unavailable after refund</span>
+                    <span class="text-sm text-muted">退款后不可下载</span>
                   ) : (
                     <a
                       href={`/order/${token}/download/${item.public_id}`}
                       class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-hover"
-                    >Download</a>
+                    >下载</a>
                   )}
                 </li>
               ))}
@@ -117,31 +117,30 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
           </section>
         )}
         {paymentLabel && (
-          <p class="mt-1 text-sm text-muted">Paid with {paymentLabel}</p>
+          <p class="mt-1 text-sm text-muted">支付方式：{paymentLabel}</p>
         )}
         {/* Amounts only — the internal note is for the merchant, not the buyer. */}
         {order.refunded_cents > 0 && (
           <p class="mt-2 text-sm text-muted">
             {order.refunded_cents >= order.amount_total_cents
-              ? `Refunded ${formatPrice(order.refunded_cents, order.currency)}.`
-              : `Refunded ${formatPrice(order.refunded_cents, order.currency)} — ${formatPrice(
+              ? `已退款 ${formatPrice(order.refunded_cents, order.currency)}。`
+              : `已退款 ${formatPrice(order.refunded_cents, order.currency)} — 仍有余款 ${formatPrice(
                   order.amount_total_cents - order.refunded_cents,
                   order.currency,
-                )} still paid.`}
+                )}。`}
           </p>
         )}
         <a href={shopHref} class="mt-6 inline-block text-accent hover:underline">
-          &larr; Continue shopping
+          &larr; 继续购物
         </a>
       </Fragment>
     ) : (
       <Fragment>
         {/* Order not recorded yet — poll until the webhook lands (no JS). */}
         <meta http-equiv="refresh" content="3" />
-        <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">Confirming your order…</h1>
+        <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">正在确认订单…</h1>
         <p class="text-muted">
-          Your payment went through and we're recording your order. This page
-          refreshes automatically — it usually takes just a few seconds.
+          支付已完成，我们正在记录你的订单。本页面会自动刷新——通常只需几秒钟。
         </p>
       </Fragment>
     )

@@ -139,7 +139,13 @@ function importsOf(source) {
   return found;
 }
 
-/** Resolve a relative specifier to an actual file, repo-relative. */
+/** Resolve a relative specifier to an actual file, repo-relative.
+ *
+ *  Returned with forward slashes ALWAYS: on Windows, node's path functions
+ *  produce `src\features\...`, and every rule in this script matches
+ *  repo-relative paths written with `/`. Without the normalization the
+ *  allowlist rejects legitimate controls and the denylist waves real
+ *  violations through — silently, because both compare strings. */
 async function resolveLocal(specifier, fromFile) {
   if (!specifier.startsWith('.')) return null;
   const base = normalize(join(dirname(fromFile), specifier));
@@ -150,7 +156,7 @@ async function resolveLocal(specifier, fromFile) {
   ];
   for (const candidate of candidates) {
     try {
-      if ((await stat(candidate)).isFile()) return candidate;
+      if ((await stat(candidate)).isFile()) return candidate.replaceAll('\\', '/');
     } catch {
       // Keep trying; an unresolvable specifier is reported by the caller.
     }

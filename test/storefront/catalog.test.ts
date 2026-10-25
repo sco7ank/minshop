@@ -59,14 +59,15 @@ describe('buildSortModel', () => {
   it('flips direction on the field already sorting the list', () => {
     const active = buildSortModel('/products', 'price', 'asc').options.find((o) => o.current);
 
-    expect(active?.label).toBe('Price');
+    // HYPEBEN 中文文案：标签是展示层，行为契约（方向/URL）不变。
+    expect(active?.label).toBe('价格');
     expect(active?.direction).toBe('asc');
     expect(active?.href).toContain('dir=desc');
   });
 
   it('applies each inactive field its own natural direction', () => {
     const name = buildSortModel('/products', 'price', 'asc').options.find(
-      (o) => o.label === 'Name',
+      (o) => o.label === '名称',
     );
 
     expect(name?.current).toBe(false);
@@ -147,7 +148,7 @@ describe('the store-owned catalog', () => {
   it('keeps pagination a labelled landmark with rel hints', async () => {
     const html = await render(Catalog, model());
 
-    expect(html).toContain('aria-label="Pagination"');
+    expect(html).toContain('aria-label="分页"');
     expect(html).toContain('rel="next"');
     expect(html).toContain('aria-current="page"');
   });
@@ -195,7 +196,7 @@ describe('an independently authored catalog', () => {
     expect(html).toContain('<table');
     expect(html).toContain('data-product="prod_k7m2qx8vn1"');
     expect(html).toContain('In stock');
-    expect(html).toContain('aria-label="Pagination"');
+    expect(html).toContain('aria-label="分页"');
     expect(html).not.toContain('reveal group');
   });
 

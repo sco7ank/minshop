@@ -15,41 +15,41 @@ interface Guide {
 }
 const GUIDES: Record<string, Guide> = {
   stripe: {
-    title: 'Set up card payments (Stripe)',
-    intro: 'Accept Visa, Mastercard, Apple Pay and more via Stripe Checkout.',
+    title: '配置银行卡支付（Stripe）',
+    intro: '通过 Stripe Checkout 接受 Visa、Mastercard、Apple Pay 等银行卡支付。',
     steps: [
-      'Create a Stripe account and grab your Secret key from dashboard.stripe.com/apikeys.',
-      'Paste it in Admin → Settings → Payment keys (Stripe secret key). It’s stored encrypted in your database.',
-      `Add a webhook endpoint in Stripe pointing at ${origin}/api/webhook/stripe (events: checkout.session.completed, checkout.session.async_payment_succeeded, and charge.refunded — the last one syncs refunds you make in the Stripe Dashboard back to your orders).`,
-      'Paste the signing secret it gives you into Payment keys (Stripe webhook signing secret). The card button goes live automatically.',
+      '注册 Stripe 账户，在 dashboard.stripe.com/apikeys 获取 Secret key。',
+      '粘贴到 后台 → 设置 → 支付密钥（Stripe secret key）。密钥以加密形式存储在数据库中。',
+      `在 Stripe 中添加 Webhook 端点 ${origin}/api/webhook/stripe（事件：checkout.session.completed、checkout.session.async_payment_succeeded 与 charge.refunded——最后一个用于把你在 Stripe 后台操作的退款同步回订单）。`,
+      '把给出的签名密钥粘贴到 支付密钥（Stripe webhook signing secret）。银行卡按钮会自动上线。',
     ],
   },
   lightning: {
-    title: 'Set up Lightning payments',
-    intro: 'Take instant Bitcoin Lightning payments from any wallet.',
+    title: '配置 Lightning 支付',
+    intro: '接受来自任意钱包的即时 Bitcoin Lightning 支付。',
     steps: [
-      'Stand up an LNbits instance (or a phoenixd node).',
-      'In Admin → Settings → Payments, set the default rail to Lightning and pick the node (LNbits or phoenixd).',
-      'Enter the node URL in Payment config, and the key (LNbits invoice/read key, or phoenixd password) in Payment keys. The Lightning button goes live automatically.',
+      '搭建一个 LNbits 实例（或 phoenixd 节点）。',
+      '在 后台 → 设置 → 支付 中，把默认支付渠道设为 Lightning，并选择节点（LNbits 或 phoenixd）。',
+      '在 支付配置 中填写节点 URL，在 支付密钥 中填写密钥（LNbits 的 invoice/read key，或 phoenixd 密码）。Lightning 按钮会自动上线。',
     ],
   },
   opennode: {
-    title: 'Set up Bitcoin payments (OpenNode)',
-    intro: 'Hosted on-chain + Lightning checkout via OpenNode.',
+    title: '配置 Bitcoin 支付（OpenNode）',
+    intro: '通过 OpenNode 使用托管的链上 + Lightning 结账。',
     steps: [
-      'Create an OpenNode account and an API key.',
-      'Paste it in Admin → Settings → Payment keys (OpenNode API key).',
-      `Point its webhook at ${origin}/api/webhook/opennode, and set the default rail to OpenNode in Settings → Payments.`,
+      '注册 OpenNode 账户并创建 API key。',
+      '粘贴到 后台 → 设置 → 支付密钥（OpenNode API key）。',
+      `将其 Webhook 指向 ${origin}/api/webhook/opennode，并在 设置 → 支付 中把默认渠道设为 OpenNode。`,
     ],
   },
 };
 const guide = GUIDES[method] ?? null;
 ---
 
-<Layout title="Set up payments" description="How to enable a payment method.">
+<Layout title="配置支付" description="如何启用一种支付方式。">
   <div class="mx-auto max-w-xl py-8">
     <a href="/cart" class="text-xs uppercase tracking-widest text-faint hover:text-brand">
-      &larr; Back to cart
+      &larr; 返回购物袋
     </a>
 
     {
@@ -70,18 +70,16 @@ const guide = GUIDES[method] ?? null;
         </>
       ) : (
         <>
-          <h1 class="mt-4 font-serif text-3xl tracking-tight">Set up payments</h1>
+          <h1 class="mt-4 font-serif text-3xl tracking-tight">配置支付</h1>
           <p class="mt-3 text-muted">
-            This payment method isn't configured yet. Add a real rail (card or Lightning)
-            in Admin → Settings → Payments, or keep using the Demo checkout to try the store.
+            该支付方式尚未配置。请在 后台 → 设置 → 支付 中添加一个真实渠道（银行卡或 Lightning），或继续使用演示结账体验商店。
           </p>
         </>
       )
     }
 
     <div class="mt-8 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-      In the meantime, <strong class="font-semibold">Demo checkout</strong> works right now — it
-      places a real, demo-tagged order so you can see the full flow without charging anyone.
+      在此期间，<strong class="font-semibold">演示结账</strong>立即可用——它会生成一笔标记为 demo 的真实订单，让你在不向任何人扣款的情况下体验完整流程。
     </div>
   </div>
 </Layout>

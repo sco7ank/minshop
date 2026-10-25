@@ -38,6 +38,8 @@ declare namespace App {
     /** Resolved header/footer navigation, batched with settings so uncached
      *  routes (/cart, /checkout, /account) pay no extra round trip. */
     menus?: import('./features/navigation/db').Menus;
+    /** Top-level categories for the shop-mode header nav, batched with the above. */
+    categories?: import('./features/categories/db').Category[];
   }
 }
 

@@ -6,6 +6,7 @@ import { normalizeSearchQuery } from '../features/search/query';
 import { EMPTY_MENUS, visibleItems } from '../features/navigation/db';
 import { getEmailProvider } from '../features/email';
 import { buildShellModel } from '../features/storefront/shell';
+import { modeForPath } from '../features/storefront/mode';
 import StoreHeader from '#theme/Header.astro';
 import StoreFooter from '#theme/Footer.astro';
 import '../styles/global.css';
@@ -62,7 +63,7 @@ const query =
     ? normalizeSearchQuery(Astro.url.searchParams.get('q') ?? '')
     : '';
 
-const desc = (description ?? `Shop ${storeName}.`).slice(0, 160);
+const desc = (description ?? `${storeName} — 潮流媒体 × 潮流电商。`).slice(0, 160);
 const origin = publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN);
 const canonical = canonicalOverride ?? new URL(Astro.url.pathname, origin).href;
 const ogImage = image ? new URL(image, origin).href : undefined;
@@ -81,11 +82,13 @@ const shell = buildShellModel({
   searchQuery: query,
   cartEnabled,
   accountsEnabled: accountsOn,
+  mode: modeForPath(Astro.url.pathname),
+  categories: Astro.locals.categories,
 });
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -146,7 +149,7 @@ const shell = buildShellModel({
       class="invisible pointer-events-none fixed inset-0 z-40"
       role="dialog"
       aria-modal="true"
-      aria-label="Cart"
+      aria-label="购物袋"
     >
       <div data-cart-backdrop class="absolute inset-0 bg-black/30 opacity-0 transition-opacity duration-300"></div>
       <aside
@@ -154,7 +157,7 @@ const shell = buildShellModel({
         class="absolute right-0 top-0 flex h-full w-full max-w-md translate-x-full flex-col bg-paper shadow-xl transition-transform duration-300"
       >
         <div class="flex items-center justify-between border-b border-line px-6 py-5">
-          <h2 class="font-serif text-2xl tracking-tight">Your cart</h2>
+          <h2 class="text-2xl font-black tracking-tight">购物袋</h2>
           {/* 44px box, not a bare glyph: the hit area was only as big as the
               × itself, which is well under the 44×44 minimum for a touch target
               — and this is the primary way out of a full-height mobile drawer.
@@ -163,7 +166,7 @@ const shell = buildShellModel({
           <button
             type="button"
             data-cart-close
-            aria-label="Close cart"
+            aria-label="关闭购物袋"
             class="-mr-2 flex h-11 w-11 items-center justify-center rounded-md text-3xl leading-none text-faint transition-colors hover:bg-surface hover:text-brand"
           >
             &times;

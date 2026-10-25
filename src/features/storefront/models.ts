@@ -51,6 +51,115 @@ export interface ProductCardModel {
   /** Availability as a boolean, deliberately not a quantity: exact stock counts
    *  stay private, and bucket-level changes avoid cache invalidation. */
   inStock: boolean;
+  /** Brand name when the product is linked to one (HYPEBEN); null = 未关联。 */
+  brand: string | null;
+}
+
+/** An article as a card (home rails, lists, related stories). */
+export interface ArticleCardModel {
+  /** `art_` public ID. */
+  id: string;
+  title: string;
+  href: string;
+  /** 封面图；无封面时为 null，模板负责占位。 */
+  image: StorefrontImage | null;
+  /** 频道标签（如「球鞋」），已解析为中文。 */
+  category: string;
+  /** 频道 slug，用于链接 /articles?category=… */
+  categorySlug: string;
+  excerpt: string;
+  author: string;
+  /** 展示用发布时间（如「2026-10-20」），空串 = 未发布（不应出现在前台）。 */
+  date: string;
+  /** 编辑精选标记。 */
+  featured: boolean;
+}
+
+/** 文章详情页模型。 */
+export interface ArticleDetailModel {
+  id: string;
+  title: string;
+  excerpt: string;
+  author: string;
+  category: string;
+  categorySlug: string;
+  date: string;
+  /** 封面图（LCP）。 */
+  image: StorefrontImage | null;
+  /** 已渲染、已转义的正文 HTML（renderMarkdown，html:false）。 */
+  html: string;
+  /** 相关品牌（指向 /brands/<slug>）。 */
+  brands: StorefrontLink[];
+  /** 关联商品（「Shop this story」）。 */
+  products: ProductCardModel[];
+  /** 推荐文章。 */
+  related: ArticleCardModel[];
+  /** 返回资讯列表的链接。 */
+  backHref: string;
+}
+
+/** 品牌页模型：介绍 + 相关报道 + 在售商品。 */
+export interface BrandPageModel {
+  id: string;
+  name: string;
+  description: string;
+  logo: StorefrontImage | null;
+  articles: ArticleCardModel[];
+  products: ProductCardModel[];
+  backHref: string;
+}
+
+/** 品牌索引页卡片。 */
+export interface BrandSummaryModel {
+  /** `brnd_` public ID。 */
+  id: string;
+  name: string;
+  href: string;
+  description: string;
+  logo: StorefrontImage | null;
+  articleCount: number;
+  productCount: number;
+}
+
+/** 品牌索引页模型。 */
+export interface BrandsIndexModel {
+  brands: BrandSummaryModel[];
+}
+
+/** 资讯列表页模型。 */
+export interface ArticlesListModel {
+  /** 频道 chips（含每频道已发布文章数）。 */
+  categories: Array<{
+    slug: string;
+    label: string;
+    blurb: string;
+    count: number;
+    href: string;
+    current: boolean;
+  }>;
+  currentCategory: string | null;
+  currentCategoryLabel: string | null;
+  /** 无频道筛选时的头条文章（取自列表第一篇）。 */
+  lead: ArticleCardModel | null;
+  /** 网格文章（不含头条）。 */
+  articles: ArticleCardModel[];
+  total: number;
+  pagination: StorefrontPaginationModel;
+}
+/** DISCOVER 首页（编辑部 × 商城融合）模型。 */
+export interface HomeExperienceModel {
+  /** 头条文章（编辑精选中最新，或最新文章）。 */
+  lead: ArticleCardModel | null;
+  /** 编辑精选（次级大图位）。 */
+  featured: ArticleCardModel[];
+  /** 最新资讯。 */
+  latest: ArticleCardModel[];
+  /** 新品上架（商品轨）。 */
+  products: ProductCardModel[];
+  /** 顶层分类 chips。 */
+  categories: StorefrontLink[];
+  /** 品牌条（取有封面的前几个）。 */
+  brands: Array<{ name: string; href: string }>;
 }
 
 /** A resolved navigation link. Targets are validated upstream, so a template
@@ -79,6 +188,15 @@ export interface StorefrontShellModel {
   search: { action: string; query: string };
   cart: { enabled: boolean; href: string };
   account: { enabled: boolean; href: string };
+  /** HYPEBEN 双模式：当前所处模式（由路径推导）。 */
+  mode: 'discover' | 'shop';
+  /** 双模式切换器：两种模式的展示名与模式首页（模板不做任何路径推导）。 */
+  modeLabels: Record<'discover' | 'shop', string>;
+  modeHomes: Record<'discover' | 'shop', string>;
+  /** 资讯频道（全部；页脚渲染全部，页头取前几个）。 */
+  channels: StorefrontLink[];
+  /** 商城模式导航用的顶层分类（来自 D1，运营可管理）。 */
+  categoryLinks: StorefrontLink[];
 }
 
 /** One sort control. `current` marks the field the list is ordered by; clicking
@@ -222,6 +340,10 @@ export interface ProductDetailModel {
   /** Hero for the single-image case, already resolved. */
   heroImage: StorefrontImage;
   related: ProductCardModel[];
+  /** 关联品牌（指向 /brands/<slug>）；未关联时为 null。 */
+  brand: StorefrontLink | null;
+  /** 关联报道（资讯 ↔ 商品双向关联的「商品挂报道」侧）。 */
+  stories: ArticleCardModel[];
   /** Where "back to shop" goes — the catalog, wherever the merchant put it. */
   backHref: string;
   /** Validated message from ?error=, or null. */

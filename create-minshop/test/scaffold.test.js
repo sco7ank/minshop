@@ -49,6 +49,11 @@ function createTemplateRepository(root) {
   writeFileSync(join(repository, 'theme.config.json'), '{\n  "theme": "default"\n}\n');
   writeFileSync(join(repository, 'package.json'), '{"name":"minshop","private":true}\n');
   writeFileSync(join(repository, 'store.txt'), 'storefront\n');
+  // Mirror the real template repository: a .gitattributes that normalizes text
+  // files to LF on checkout. Without it, Windows `core.autocrlf=true` rewrites
+  // the cloned working tree to CRLF and the cross-platform assertion above
+  // would see `storefront\r\n` instead of `storefront\n`.
+  writeFileSync(join(repository, '.gitattributes'), '* text=auto eol=lf\n');
   writeFileSync(join(repository, 'create-minshop', 'package.json'), '{}\n');
   writeFileSync(
     join(repository, '.github', 'workflows', 'publish-create-minshop.yml'),

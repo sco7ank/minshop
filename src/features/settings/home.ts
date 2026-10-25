@@ -34,24 +34,22 @@ export function serializeHomeTarget(target: HomeTarget): string {
 /**
  * Where "back to shop" / "continue shopping" links should point.
  *
- * The catalog lives at `/` until the home page is pointed at something else,
- * and then it lives at `/products`. Hardcoding `/` sends shoppers to a page or
- * a single product instead of the products they were looking for.
- *
- * Uses the raw setting rather than resolving it: this runs on every storefront
- * page, and a link to `/` when the target is unresolvable is harmless — that is
- * where the catalog falls back to anyway.
+ * HYPEBEN: `/` is the DISCOVER editorial home, so the catalog has exactly one
+ * address — `/products` — regardless of the homePage setting. Hardcoding it
+ * here would send shoppers to the editorial home instead of the products they
+ * were looking for.
  */
-export function catalogPath(homePage: string | null | undefined): string {
-  return homePage ? '/products' : '/';
+export function catalogPath(_homePage?: string | null): string {
+  return '/products';
 }
 
 /**
- * The path `/` should render, or null to render the catalog list.
+ * The path `/` should render, or null to render the HYPEBEN DISCOVER home.
  *
  * Resolution is deliberate about visibility: an unpublished page or an inactive
- * product resolves to null. Falling back to the catalog is the only acceptable
- * failure here — a 404 homepage would be served, and edge-cached, for everyone.
+ * product resolves to null. Falling back to the editorial home is the only
+ * acceptable failure here — a 404 homepage would be served, and edge-cached,
+ * for everyone.
  */
 export async function resolveHomePath(
   db: D1Database,

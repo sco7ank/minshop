@@ -27,29 +27,28 @@ const expiresAtMs = pending.expires_at ? Date.parse(pending.expires_at) : null;
 {
   expired ? (
     <div class="mx-auto max-w-md text-center">
-      <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">Invoice expired</h1>
+      <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">发票已过期</h1>
       <p class="mb-6 text-sm text-muted">
-        This Lightning invoice is no longer payable and you weren't charged. Start a new
-        checkout to try again.
+        这笔 Lightning 发票已无法支付，你也没有被扣款。重新发起结账即可再次尝试。
       </p>
       <a
         href="/cart"
         class="inline-block rounded-md bg-brand px-5 py-2.5 text-sm font-medium text-on-brand hover:bg-brand-hover"
       >
-        Back to cart
+        返回购物袋
       </a>
     </div>
   ) : (
     <Fragment>
       <div class="mx-auto max-w-md text-center">
-        <h1 class="mb-1 font-serif text-3xl tracking-tight sm:text-4xl">Pay with Lightning</h1>
+        <h1 class="mb-1 font-serif text-3xl tracking-tight sm:text-4xl">Lightning 支付</h1>
         <p class="mb-1 text-3xl font-bold tabular-nums">{sats} sats</p>
-        <p class="mb-6 text-sm text-muted">{fiat} · scan or tap to pay</p>
+        <p class="mb-6 text-sm text-muted">{fiat} · 扫描或点击支付</p>
 
         <a
           href={lightningUri}
           class="block rounded-xl border border-line bg-surface p-4"
-          aria-label="Open in Lightning wallet"
+          aria-label="在 Lightning 钱包中打开"
         >
           <div
             class="mx-auto aspect-square w-full max-w-[18rem] rounded-lg bg-surface p-2 [&>svg]:h-full [&>svg]:w-full"
@@ -59,7 +58,7 @@ const expiresAtMs = pending.expires_at ? Date.parse(pending.expires_at) : null;
 
         <div class="mt-4 text-left">
           <label class="mb-1 block text-xs font-medium text-muted" for="invoice">
-            Lightning invoice
+            Lightning 发票
           </label>
           <div class="flex gap-2">
             <input
@@ -74,17 +73,17 @@ const expiresAtMs = pending.expires_at ? Date.parse(pending.expires_at) : null;
               data-invoice={bolt11}
               class="shrink-0 rounded-md bg-brand px-3 py-2 text-sm font-medium text-on-brand hover:bg-brand-hover"
             >
-              Copy
+              复制
             </button>
           </div>
         </div>
 
         <a href={lightningUri} class="mt-4 inline-block text-sm font-medium text-accent">
-          Open in wallet →
+          在钱包中打开 →
         </a>
 
         <p class="mt-6 text-xs text-faint" data-status>
-          Waiting for payment… this page updates automatically.
+          等待支付……本页面会自动更新。
         </p>
       </div>
 
@@ -106,7 +105,7 @@ const expiresAtMs = pending.expires_at ? Date.parse(pending.expires_at) : null;
           try {
             await navigator.clipboard.writeText(btn.dataset.invoice || '');
             const prev = btn.textContent;
-            btn.textContent = 'Copied';
+            btn.textContent = '已复制';
             setTimeout(() => (btn.textContent = prev), 1500);
           } catch {
             /* clipboard unavailable — the invoice is still selectable */

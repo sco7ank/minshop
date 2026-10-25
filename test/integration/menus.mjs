@@ -73,10 +73,13 @@ const MIGRATION = readFileSync(new URL('../../migrations/0028_nav_menus.sql', im
  *
  * Splitting first and discarding chunks that begin with '--' silently drops every
  * statement preceded by a comment block — which, in this migration, is all of
- * them. The migration has no semicolons or '--' inside string literals.
+ * them. The migration has no semicolons or '--' inside string literals. CRLF
+ * line endings are normalized first: a trailing '\r' otherwise defeats the
+ * line-anchored comment strip ('.' stops at '\r' and '$' sits before '\n').
  */
 const statements = (sql) =>
   sql
+    .replace(/\r\n/g, '\n')
     .split('\n')
     .map((line) => line.replace(/^\s*--.*$/, ''))
     .join('\n')
@@ -302,11 +305,13 @@ await check('unavailable targets vanish from the storefront but stay listed for 
   );
 });
 
-await check('catalog href follows the home page setting', async () => {
+await check('catalog href is fixed at /products (DISCOVER owns /)', async () => {
   const db = await seededStore();
   await db.exec('DELETE FROM menu_items');
   await addMenuItem(db, { location: 'header', targetType: 'catalog', targetId: null, label: null });
-  assert.equal((await getMenus(db, null)).header[0].href, '/');
+  // HYPEBEN: '/' is the DISCOVER editorial home, so the SHOP catalog has exactly
+  // one address — /products — independent of the home-page setting.
+  assert.equal((await getMenus(db, null)).header[0].href, '/products');
   assert.equal((await getMenus(db, 'page:1')).header[0].href, '/products');
 });
 

@@ -122,6 +122,26 @@ try {
        page_id INTEGER NOT NULL,
        media_id INTEGER NOT NULL,
        PRIMARY KEY (page_id, media_id))`,
+    `CREATE TABLE articles (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       public_id TEXT UNIQUE,
+       title TEXT NOT NULL,
+       slug TEXT NOT NULL UNIQUE,
+       cover_image_key TEXT,
+       published INTEGER NOT NULL DEFAULT 0,
+       created_at TEXT NOT NULL DEFAULT (datetime('now')),
+       updated_at TEXT NOT NULL DEFAULT (datetime('now')))`,
+    `CREATE TABLE article_media (
+       article_id INTEGER NOT NULL,
+       media_id INTEGER NOT NULL,
+       PRIMARY KEY (article_id, media_id))`,
+    `CREATE TABLE brands (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       public_id TEXT UNIQUE,
+       name TEXT NOT NULL,
+       slug TEXT NOT NULL UNIQUE,
+       logo_image_key TEXT,
+       published INTEGER NOT NULL DEFAULT 0)`,
     `CREATE TABLE settings (
        key TEXT PRIMARY KEY,
        value TEXT NOT NULL,

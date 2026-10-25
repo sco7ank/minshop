@@ -35,20 +35,29 @@ const orderCfg = getConfig().orderNumber;
 const timeZone = Astro.locals.settings?.timeZone ?? getConfig().timeZone;
 // The catalog is at / until the home page is pointed elsewhere.
 const shopHref = catalogPath(Astro.locals.settings?.homePage);
+// Order states shown to the customer. `status` itself stays a stable machine
+// token (paid/pending/refunded/…) — only the label is localized.
+const STATUS_LABELS: Record<string, string> = {
+  paid: '已支付',
+  pending: '待支付',
+  refunded: '已退款',
+  canceled: '已取消',
+  failed: '支付失败',
+};
 ---
 
-<Layout title="Your account">
+<Layout title="我的账户">
   <div class="mx-auto max-w-2xl">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="font-serif text-3xl tracking-tight sm:text-4xl">Your orders</h1>
-      <a href="/account/logout" class="text-sm font-medium text-accent">Sign out</a>
+      <h1 class="font-serif text-3xl tracking-tight sm:text-4xl">我的订单</h1>
+      <a href="/account/logout" class="text-sm font-medium text-accent">退出登录</a>
     </div>
-    <p class="mb-6 text-sm text-muted">Signed in as {email}</p>
+    <p class="mb-6 text-sm text-muted">已登录：{email}</p>
 
     {
       orders.length === 0 ? (
         <p class="rounded-lg border border-line bg-surface px-4 py-6 text-center text-sm text-muted">
-          No orders yet. <a href={shopHref} class="font-medium text-accent">Start shopping →</a>
+          还没有订单。<a href={shopHref} class="font-medium text-accent">去逛逛 →</a>
         </p>
       ) : (
         <ul class="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
@@ -57,21 +66,21 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
               <div>
                 {orderLinks.get(o.id) ? (
                   <a href={orderLinks.get(o.id)} class="font-medium text-ink hover:text-accent">
-                    Order #{orderReference(o.public_id, o.id, orderCfg)}
+                    订单 #{orderReference(o.public_id, o.id, orderCfg)}
                   </a>
                 ) : (
                   <span class="font-medium text-ink">
-                    Order #{orderReference(o.public_id, o.id, orderCfg)}
+                    订单 #{orderReference(o.public_id, o.id, orderCfg)}
                   </span>
                 )}
                 <div class="text-xs text-faint">{formatDate(o.created_at, undefined, timeZone)}</div>
               </div>
               <div class="text-right">
                 <div class="tabular-nums">{formatPrice(o.amount_total_cents, o.currency)}</div>
-                <div class="text-xs capitalize text-faint">
+                <div class="text-xs text-faint">
                   {o.refunded_cents > 0 && o.refunded_cents < o.amount_total_cents
-                    ? 'Partially refunded'
-                    : o.status}
+                    ? '部分退款'
+                    : (STATUS_LABELS[o.status] ?? o.status)}
                 </div>
               </div>
             </li>

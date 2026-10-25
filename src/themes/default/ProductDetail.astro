@@ -15,6 +15,9 @@ import ProductPurchaseForm from '../../features/storefront/controls/ProductPurch
  * purchase form owns the field names, the sold-out states, and `data-fullpage`,
  * without which Buy now is captured by the cart drawer instead of navigating.
  *
+ * HYPEBEN: `model.brand` links to the brand page, `model.stories` are the
+ * articles that cover this product (资讯 ↔ 商品双向关联).
+ *
  * See CUSTOMIZING.md for the full contract.
  */
 interface Props {
@@ -26,17 +29,16 @@ const { model, purchase } = Astro.props;
 ---
 
 <a href={model.backHref} class="text-xs uppercase tracking-widest text-faint hover:text-brand">
-  &larr; Back to shop
+  &larr; 返回商城
 </a>
 
 {
   model.error && (
-    <p class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+    <p class="mt-4 border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
       {model.error}
     </p>
   )
 }
-
 
 <div class="mt-6 grid gap-10 md:grid-cols-2 md:gap-16">
   <ProductGallery
@@ -59,15 +61,28 @@ const { model, purchase } = Astro.props;
       )
     }
 
-    <h1 class="font-serif text-4xl tracking-tight">{model.name}</h1>
-    {model.digitalDelivery && <p class="mt-2 text-xs uppercase tracking-widest text-brand">Digital download</p>}
+    {
+      model.brand && (
+        <a
+          href={model.brand.href}
+          class="mb-2 w-fit text-[0.6875rem] font-medium uppercase tracking-[0.22em] text-accent hover:underline"
+        >
+          {model.brand.text}
+        </a>
+      )
+    }
+
+    <h1 class="text-4xl tracking-tight text-ink sm:text-5xl" style="font-weight: var(--display-weight)">
+      {model.name}
+    </h1>
+    {model.digitalDelivery && <p class="mt-2 text-xs uppercase tracking-widest text-brand">数字商品</p>}
     <p
       class="mt-4 text-2xl tabular-nums text-muted"
       data-price-display
       data-base={model.priceCents}
       data-currency={model.currency}
     >
-      {model.priceVaries && <span class="text-base text-faint">from </span>}
+      {model.priceVaries && <span class="text-base text-faint">起 </span>}
       {model.formattedPrice}
     </p>
     {
@@ -76,7 +91,7 @@ const { model, purchase } = Astro.props;
          availability without pinning copy. */
       model.lowStock && (
         <p data-low-stock class="mt-2 text-sm text-amber-700">
-          Low stock
+          库存紧张
         </p>
       )
     }
@@ -113,15 +128,42 @@ const { model, purchase } = Astro.props;
         <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
         <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
       </svg>
-      <span data-share-label>Share</span>
+      <span data-share-label>分享</span>
     </button>
   </div>
 </div>
 
 {
+  /* 相关报道：资讯 ↔ 商品双向关联的商品侧。无关联报道时整段不渲染。 */
+  model.stories.length > 0 && (
+    <section class="mt-20 border-t border-line pt-12">
+      <h2 class="mb-8 text-xs uppercase tracking-[0.25em] text-faint">相关报道</h2>
+      <ul class="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+        {model.stories.map((story, i) => (
+          <li class="reveal group" style={`animation-delay:${Math.min(i, 8) * 60}ms`}>
+            <a href={story.href} class="block">
+              <p class="text-[0.6875rem] font-medium uppercase tracking-[0.22em] text-accent">
+                {story.category}
+              </p>
+              <h3 class="mt-2 text-lg font-medium leading-snug tracking-tight text-ink group-hover:underline">
+                {story.title}
+              </h3>
+              <p class="mt-2 line-clamp-2 text-sm text-muted">{story.excerpt}</p>
+              <p class="mt-3 text-xs text-faint">
+                {story.author}{story.date ? ` · ${story.date}` : ''}
+              </p>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+{
   model.related.length > 0 && (
     <section class="mt-20 border-t border-line pt-12">
-      <h2 class="mb-8 text-xs uppercase tracking-[0.25em] text-faint">You may also like</h2>
+      <h2 class="mb-8 text-xs uppercase tracking-[0.25em] text-faint">相关商品</h2>
       <ul class="grid grid-cols-2 gap-x-6 gap-y-12 lg:grid-cols-4">
         {model.related.map((card, i) => (
           <ProductCard card={card} index={i} headingLevel="h3" />

@@ -1,0 +1,40 @@
+---
+import { env } from 'cloudflare:workers';
+import Layout from '../../layouts/Layout.astro';
+import ArticleDetail from '#theme/ArticleDetail.astro';
+import { loadArticleDetail } from '../../features/storefront/articles';
+import { addCacheTags, articleCacheTags, productCacheTags } from '../../features/cache/tags';
+import { getConfig } from '../../config';
+
+/**
+ * HYPEBEN 文章详情（DISCOVER 模式）。草稿与不存在的 slug 同样 404；
+ * 404 不缓存（启发式缓存会把已发布文章继续挡在门外）。
+ */
+const loaded = await loadArticleDetail(env.DB, {
+  slug: Astro.params.slug,
+  imageBaseUrl: getConfig().images.baseUrl,
+  currency: getConfig().currency,
+  delivery: Astro.locals.settings?.imageDelivery,
+});
+
+if (loaded.status === 'not_found') {
+  return new Response('Not found', {
+    status: 404,
+    headers: { 'cache-control': 'no-store' },
+  });
+}
+
+// 文章自身 + 关联商品的缓存标签：任一侧更新都让本页失效。
+addCacheTags(Astro.response.headers, [
+  ...articleCacheTags([loaded.model.id]),
+  ...productCacheTags(loaded.cacheTagIds),
+]);
+---
+
+<Layout
+  title={loaded.model.title}
+  description={loaded.model.excerpt || undefined}
+  image={loaded.model.image?.src}
+>
+  <ArticleDetail model={loaded.model} />
+</Layout>
